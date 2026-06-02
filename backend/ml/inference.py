@@ -10,9 +10,17 @@ from ml.medicalnet import get_multiclass_model
 
 logger = logging.getLogger(__name__)
 
-# Initialize global model
-_model = get_multiclass_model()
-_model.eval()
+# Initialize global model lazily to prevent OOM crashes on memory-constrained platforms like Render Free Tier
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        logger.info("Initializing 3D ResNet-10 Multiclass model...")
+        _model = get_multiclass_model()
+        _model.eval()
+    return _model
+
 
 def _file_md5(file_path: str) -> str:
     """Compute MD5 hash of a file's contents for validation and prior seeding."""
@@ -183,7 +191,7 @@ def run_inference(file_path: str, model_type: str = "multiclass") -> dict:
 
     # 3. Model Forward Pass
     with torch.no_grad():
-        logits = _model(tensor_img)
+        logits = get_model()(tensor_img)
         probabilities = torch.softmax(logits, dim=1).numpy()[0] # [CN, MCI, AD]
         
     # 4. Apply deterministic seed calibration for realistic disease stage distributions

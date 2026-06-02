@@ -69,7 +69,8 @@ def generate_brain_heatmap_slices(
 
 def _compute_pytorch_gradcam(volume: np.ndarray, prediction_class: int, shape: tuple) -> np.ndarray:
     """Compute real Grad-CAM 3D volume using PyTorch autograd gradients."""
-    from ml.inference import _model
+    from ml.inference import get_model
+    model_to_use = get_model()
     
     # Setup inputs with gradient tracking
     tensor_img = torch.tensor(volume, dtype=torch.float32).unsqueeze(0).unsqueeze(0)
@@ -85,14 +86,14 @@ def _compute_pytorch_gradcam(volume: np.ndarray, prediction_class: int, shape: t
         gradients.append(grad_out[0])
         
     # Hook into final layer4 convolutional layer of ResNet-10
-    h_f = _model.layer4.register_forward_hook(forward_hook)
-    h_b = _model.layer4.register_backward_hook(backward_hook)
+    h_f = model_to_use.layer4.register_forward_hook(forward_hook)
+    h_b = model_to_use.layer4.register_backward_hook(backward_hook)
     
     try:
         # Run forward pass under grad-tracking context
         with torch.enable_grad():
-            _model.zero_grad()
-            logits = _model(tensor_img)
+            model_to_use.zero_grad()
+            logits = model_to_use(tensor_img)
             score = logits[0, prediction_class]
             score.backward()
             
