@@ -1,6 +1,5 @@
 fastapi
 uvicorn
-sqlalchemy
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
@@ -8,4 +7,12 @@ python-dotenv
 aiofiles
 numpy
 Pillow
-psycopg2-binary
+motor
+pymongo
+dnspython
+SimpleITK
+nibabel
+reportlab
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
