@@ -1,198 +1,269 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, status
+from bson import ObjectId
 from datetime import datetime
-import json
+from typing import List
 
 import models
-from database import get_db
-from auth import get_current_user
+from database import patients_col, scans_col, users_col
+from auth import get_current_user, require_role
+from utils.audit import log_audit
 
 router = APIRouter(prefix="/api/patients", tags=["patients"])
 
-
-class PatientCreate(BaseModel):
-    full_name: str
-    date_of_birth: str
-    gender: str
-    contact: str = ""
-    medical_history: str = ""
-
-
 @router.post("/create", status_code=201)
-def create_patient(
-    patient: PatientCreate,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+async def create_patient(
+    patient: models.PatientCreate,
+    current_user: dict = Depends(require_role(["doctor"]))
 ):
-    if current_user.role != models.RoleEnum.doctor:
-        raise HTTPException(status_code=403, detail="Only doctors can create patients")
-
     # Generate unique patient code: NA-YYYY-NNNN
-    count = db.query(models.Patient).count()
+    count = await patients_col.count_documents({})
     year = datetime.now().year
     code = f"NA-{year}-{str(count + 1).zfill(4)}"
-
-    new_patient = models.Patient(
-        patient_code=code,
-        doctor_id=current_user.id,
-        full_name=patient.full_name,
-        date_of_birth=patient.date_of_birth,
-        gender=patient.gender,
-        contact=patient.contact,
-        medical_history=patient.medical_history,
-    )
-    db.add(new_patient)
-    db.commit()
-    db.refresh(new_patient)
-
-    return {
-        "id": new_patient.id,
-        "patient_code": new_patient.patient_code,
-        "full_name": new_patient.full_name,
-        "date_of_birth": new_patient.date_of_birth,
-        "gender": new_patient.gender,
-        "contact": new_patient.contact,
-        "medical_history": new_patient.medical_history,
-        "doctor_id": new_patient.doctor_id,
-    }
-
-
-@router.get("/")
-def get_patients(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    if current_user.role == models.RoleEnum.doctor:
-        patients = (
-            db.query(models.Patient)
-            .filter(models.Patient.doctor_id == current_user.id)
-            .all()
-        )
-    else:
-        patients = (
-            db.query(models.Patient)
-            .filter(models.Patient.user_id == current_user.id)
-            .all()
-        )
-
-    # Return flat list for direct frontend consumption
-    result = []
-    for p in patients:
-        scan_count = db.query(models.Scan).filter(models.Scan.patient_id == p.id).count()
-        result.append(
-            {
-                "id": p.id,
-                "patient_code": p.patient_code,
-                "full_name": p.full_name,
-                "date_of_birth": p.date_of_birth,
-                "gender": p.gender,
-                "contact": p.contact,
-                "medical_history": p.medical_history,
-                "doctor_id": p.doctor_id,
-                "scan_count": scan_count,
-            }
-        )
-
-    return result
-
-
-@router.get("/{patient_id}")
-def get_patient(
-    patient_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-
-    # Security check
-    if current_user.role == models.RoleEnum.patient and patient.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    if current_user.role == models.RoleEnum.doctor and patient.doctor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    # Get patient's scans
-    scans = (
-        db.query(models.Scan)
-        .filter(models.Scan.patient_id == patient_id)
-        .order_by(models.Scan.upload_date.desc())
-        .all()
-    )
-
-    scan_list = []
-    for s in scans:
-        brain_regions = {}
-        if s.brain_regions_json:
-            try:
-                brain_regions = json.loads(s.brain_regions_json)
-            except json.JSONDecodeError:
-                pass
-
-        scan_list.append(
-            {
-                "id": s.scan_id_string,
-                "date": s.upload_date.isoformat() if s.upload_date else None,
-                "diagnosis": s.prediction,
-                "confidence": round(max(s.conf_cn or 0, s.conf_mci or 0, s.conf_ad or 0) * 100, 1),
-                "conf_cn": s.conf_cn,
-                "conf_mci": s.conf_mci,
-                "conf_ad": s.conf_ad,
-                "status": s.status,
-                "urgency": s.urgency,
-                "model": s.model_used,
-                "brain_regions": brain_regions,
-            }
-        )
-
-    return {
-        "id": patient.id,
-        "patient_code": patient.patient_code,
+    
+    # Check if a patient user account exists with this email/contact or if they are created by doctor
+    # For now, patient is created directly by doctor.
+    patient_dict = {
+        "patient_code": code,
+        "doctor_id": current_user["id"],
+        "user_id": None, # Will link if patient signs up later
         "full_name": patient.full_name,
         "date_of_birth": patient.date_of_birth,
         "gender": patient.gender,
         "contact": patient.contact,
         "medical_history": patient.medical_history,
-        "doctor_id": patient.doctor_id,
-        "scans": scan_list,
-        "total_scans": len(scan_list),
+        "doctor_notes": "",
+        "created_at": datetime.utcnow()
+    }
+    
+    result = await patients_col.insert_one(patient_dict)
+    new_patient_id = str(result.inserted_id)
+    
+    # Audit log
+    await log_audit(
+        user_id=current_user["id"],
+        email=current_user["email"],
+        action="PATIENT_CREATE",
+        details=f"Created patient profile for: {patient.full_name} ({code})"
+    )
+    
+    return {
+        "id": new_patient_id,
+        "patient_code": code,
+        "full_name": patient.full_name,
+        "date_of_birth": patient.date_of_birth,
+        "gender": patient.gender,
+        "contact": patient.contact,
+        "medical_history": patient.medical_history,
+        "doctor_id": current_user["id"]
     }
 
+@router.get("/")
+async def get_patients(
+    current_user: dict = Depends(get_current_user)
+):
+    role = current_user.get("role")
+    user_id = current_user.get("id")
+    
+    # Query logic depending on user role
+    if role == "doctor":
+        cursor = patients_col.find({"doctor_id": user_id})
+    elif role == "patient":
+        # Search patient profiles linked to this user ID
+        cursor = patients_col.find({"user_id": user_id})
+    elif role == "admin":
+        cursor = patients_col.find({})
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized role"
+        )
+        
+    patients = await cursor.to_list(length=100)
+    
+    # Augment with scan counts
+    result = []
+    for p in patients:
+        p_id_str = str(p["_id"])
+        scan_count = await scans_col.count_documents({"patient_id": p_id_str})
+        p_data = models.serialize_doc(p)
+        p_data["scan_count"] = scan_count
+        result.append(p_data)
+        
+    return result
+
+@router.get("/{patient_id}")
+async def get_patient(
+    patient_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        obj_id = ObjectId(patient_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid patient ID format"
+        )
+        
+    patient = await patients_col.find_one({"_id": obj_id})
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+        
+    role = current_user.get("role")
+    user_id = current_user.get("id")
+    
+    # Security boundaries
+    if role == "patient" and patient.get("user_id") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Unauthorized patient"
+        )
+    if role == "doctor" and patient.get("doctor_id") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Patient belongs to another clinician"
+        )
+        
+    # Get scans history
+    scan_cursor = scans_col.find({"patient_id": patient_id}).sort("upload_date", -1)
+    scans = await scan_cursor.to_list(length=50)
+    
+    scan_list = []
+    for s in scans:
+        import json
+        brain_regions = s.get("brain_regions", {})
+        if isinstance(brain_regions, str):
+            try:
+                brain_regions = json.loads(brain_regions)
+            except Exception:
+                brain_regions = {}
+                
+        # Confidence resolution
+        max_conf = max(s.get("conf_cn", 0), s.get("conf_mci", 0), s.get("conf_ad", 0))
+        
+        scan_list.append({
+            "id": s.get("scan_id_string"),
+            "date": s.get("upload_date").isoformat() if s.get("upload_date") else None,
+            "diagnosis": s.get("prediction"),
+            "confidence": round(max_conf * 100, 1),
+            "conf_cn": s.get("conf_cn"),
+            "conf_mci": s.get("conf_mci"),
+            "conf_ad": s.get("conf_ad"),
+            "status": s.get("status"),
+            "urgency": s.get("urgency"),
+            "model": s.get("model_used"),
+            "brain_regions": brain_regions
+        })
+        
+    # Audit log
+    await log_audit(
+        user_id=current_user["id"],
+        email=current_user["email"],
+        action="PATIENT_VIEW",
+        details=f"Viewed patient file for: {patient.get('full_name')} ({patient.get('patient_code')})"
+    )
+    
+    p_data = models.serialize_doc(patient)
+    p_data["scans"] = scan_list
+    p_data["total_scans"] = len(scan_list)
+    
+    return p_data
 
 @router.get("/{patient_id}/timeline")
-def get_patient_timeline(
-    patient_id: int,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
+async def get_patient_timeline(
+    patient_id: str,
+    current_user: dict = Depends(get_current_user)
 ):
-    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    try:
+        obj_id = ObjectId(patient_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid patient ID format"
+        )
+        
+    patient = await patients_col.find_one({"_id": obj_id})
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
-    if current_user.role == models.RoleEnum.patient and patient.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    scans = (
-        db.query(models.Scan)
-        .filter(models.Scan.patient_id == patient_id)
-        .order_by(models.Scan.upload_date.asc())
-        .all()
-    )
-
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+        
+    # Access checks
+    role = current_user.get("role")
+    user_id = current_user.get("id")
+    if role == "patient" and patient.get("user_id") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized"
+        )
+    if role == "doctor" and patient.get("doctor_id") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized"
+        )
+        
+    scan_cursor = scans_col.find({"patient_id": patient_id}).sort("upload_date", 1)
+    scans = await scan_cursor.to_list(length=100)
+    
     timeline = []
-    for scan in scans:
-        if scan.prediction:
-            score = {"CN": 0, "MCI": 1, "AD": 2}.get(scan.prediction, 0)
-            conf = max(scan.conf_cn or 0, scan.conf_mci or 0, scan.conf_ad or 0)
-            timeline.append(
-                {
-                    "date": scan.upload_date.strftime("%b %Y") if scan.upload_date else "",
-                    "date_iso": scan.upload_date.isoformat() if scan.upload_date else "",
-                    "score": score,
-                    "result": scan.prediction,
-                    "conf": round(conf * 100, 1),
-                    "scan_id": scan.scan_id_string,
-                }
-            )
-
+    for s in scans:
+        pred = s.get("prediction")
+        if pred:
+            score = {"CN": 0, "MCI": 1, "AD": 2}.get(pred, 0)
+            conf = max(s.get("conf_cn", 0), s.get("conf_mci", 0), s.get("conf_ad", 0))
+            timeline.append({
+                "date": s.get("upload_date").strftime("%b %Y") if s.get("upload_date") else "",
+                "date_iso": s.get("upload_date").isoformat() if s.get("upload_date") else "",
+                "score": score,
+                "result": pred,
+                "conf": round(conf * 100, 1),
+                "scan_id": s.get("scan_id_string")
+            })
+            
     return timeline
+
+@router.delete("/{patient_id}", status_code=204)
+async def delete_patient(
+    patient_id: str,
+    current_user: dict = Depends(require_role(["doctor"]))
+):
+    try:
+        obj_id = ObjectId(patient_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid patient ID format"
+        )
+        
+    patient = await patients_col.find_one({"_id": obj_id})
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+        
+    # Check if the doctor owns this patient profile
+    if patient.get("doctor_id") != current_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: Patient profile owned by another doctor"
+        )
+        
+    # Delete patient profile
+    await patients_col.delete_one({"_id": obj_id})
+    
+    # Delete associated scans
+    await scans_col.delete_many({"patient_id": patient_id})
+    
+    # Log audit
+    await log_audit(
+        user_id=current_user["id"],
+        email=current_user["email"],
+        action="PATIENT_DELETE",
+        details=f"Deleted patient profile for: {patient.get('full_name')} ({patient.get('patient_code')})"
+    )
+    
+    return None

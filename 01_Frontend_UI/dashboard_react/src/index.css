@@ -2,52 +2,407 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ═══════════════════════════════════════════════════════════════════════
+   NeuroAssist V3 — Premium Healthcare AI Design System
+   Green: #67E499 / #A0E8AF     Purple: #8F63F4 / #CAA8F5 / #EAE8FF
+═══════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── CSS Design Tokens ────────────────────────────────────────────── */
+:root {
+  /* Greens */
+  --green-50:  #f0fdf6;
+  --green-100: #dcfce9;
+  --green-200: #a0e8af;
+  --green-300: #67e499;
+  --green-400: #3dd678;
+  --green-500: #22c55e;
+
+  /* Purples */
+  --purple-100: #eae8ff;
+  --purple-200: #caa8f5;
+  --purple-400: #9d60f6;
+  --purple-500: #8f63f4;
+  --purple-600: #7c3aed;
+
+  /* Surfaces */
+  --surface-base:    #0d0f1a;
+  --surface-raised:  #131625;
+  --surface-overlay: #1a1d30;
+  --surface-border:  rgba(103, 228, 153, 0.12);
+  --surface-border-p: rgba(143, 99, 244, 0.15);
+
+  /* Typography */
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+  --text-green:     #67e499;
+  --text-purple:    #caa8f5;
+
+  /* Shadows */
+  --shadow-glass:  0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-panel:  0 4px 24px rgba(0,0,0,0.6);
+  --shadow-card:   0 2px 12px rgba(0,0,0,0.4);
+  --glow-green:    0 0 30px rgba(103,228,153,0.2);
+  --glow-purple:   0 0 30px rgba(143,99,244,0.2);
+}
+
+/* ── Base Reset ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
 
 body {
-    margin: 0;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-    overflow-x: hidden;
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--surface-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  /* Disable text selection globally */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* Glassmorphism Utilities */
-@layer components {
-    .glass {
-        @apply bg-white/60 backdrop-blur-xl border border-white/40 shadow-lg rounded-2xl;
-    }
-
-    .glass-dark {
-        @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-lg rounded-2xl text-white;
-    }
-
-    .btn-primary {
-        @apply bg-primary text-white font-semibold py-2 px-4 rounded-xl shadow-md hover:bg-primary-dark hover:shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 ease-out;
-    }
-
-    .btn-icon {
-        @apply p-2 rounded-full hover:bg-black/5 text-gray-600 transition-colors mx-1;
-    }
+/* Re-enable selection only where needed */
+input, textarea, [contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-    width: 8px;
+/* ── Typography ──────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
 }
 
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+  background: rgba(103, 228, 153, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(103, 228, 153, 0.4); }
+
+/* ════════════════════════════════════════════════════════════════════
+   COMPONENT CLASSES
+═══════════════════════════════════════════════════════════════════ */
+
+@layer components {
+
+  /* ── Glass Cards & Panels ──────────────────────────────────────── */
+  .glass {
+    @apply rounded-2xl border;
+    background: rgba(19, 22, 37, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: var(--surface-border);
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-purple {
+    @apply rounded-2xl border;
+    background: rgba(19, 22, 37, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: var(--surface-border-p);
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-raised {
+    background: rgba(26, 29, 48, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* ── Radiology Workspace Panels ────────────────────────────────── */
+  .workspace-panel {
+    background: rgba(13, 15, 26, 0.95);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-panel);
+    overflow: hidden;
+  }
+
+  .workspace-panel-header {
+    @apply flex items-center justify-between px-4 py-3 border-b;
+    background: rgba(19, 22, 37, 0.9);
+    border-color: var(--surface-border);
+  }
+
+  /* ── Buttons ────────────────────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
+    @apply px-5 py-2.5 text-sm;
+    background: linear-gradient(135deg, var(--green-300), var(--green-400));
+    color: #0d0f1a;
+    box-shadow: 0 4px 15px rgba(103, 228, 153, 0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(103, 228, 153, 0.45);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
+    @apply px-5 py-2.5 text-sm;
+    background: rgba(103, 228, 153, 0.1);
+    color: var(--text-green);
+    border: 1px solid rgba(103, 228, 153, 0.25);
+  }
+  .btn-secondary:hover {
+    background: rgba(103, 228, 153, 0.18);
+    border-color: rgba(103, 228, 153, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .btn-purple {
+    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
+    @apply px-5 py-2.5 text-sm;
+    background: linear-gradient(135deg, var(--purple-500), var(--purple-600));
+    color: white;
+    box-shadow: 0 4px 15px rgba(143, 99, 244, 0.3);
+  }
+  .btn-purple:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(143, 99, 244, 0.45);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 font-medium rounded-xl transition-all duration-200;
+    @apply px-4 py-2 text-sm;
+    color: var(--text-secondary);
+    background: transparent;
+  }
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-primary);
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
+    @apply px-5 py-2.5 text-sm;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+  }
+
+  /* ── Input Fields ───────────────────────────────────────────────── */
+  .input-field {
+    @apply w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 outline-none;
+    background: rgba(19, 22, 37, 0.8);
+    border: 1px solid var(--surface-border);
+    color: var(--text-primary);
+  }
+  .input-field::placeholder { color: var(--text-muted); }
+  .input-field:focus {
+    border-color: var(--green-300);
+    box-shadow: 0 0 0 3px rgba(103, 228, 153, 0.1);
+    background: rgba(26, 29, 48, 0.9);
+  }
+
+  .input-label {
+    @apply block text-xs font-semibold mb-1.5 uppercase tracking-wide;
+    color: var(--text-muted);
+  }
+
+  /* ── Status Badges ──────────────────────────────────────────────── */
+  .badge-cn {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: rgba(103, 228, 153, 0.15);
+    color: var(--green-300);
+    border: 1px solid rgba(103, 228, 153, 0.3);
+  }
+  .badge-mci {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+  .badge-ad {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+  .badge-pending {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+  }
+
+  /* ── Data cards ─────────────────────────────────────────────────── */
+  .metric-card {
+    @apply p-5 rounded-2xl transition-all duration-300;
+    background: rgba(19, 22, 37, 0.8);
+    border: 1px solid var(--surface-border);
+  }
+  .metric-card:hover {
+    border-color: rgba(103, 228, 153, 0.3);
+    box-shadow: var(--glow-green);
+    transform: translateY(-2px);
+  }
+
+  /* ── Skeleton Loaders ───────────────────────────────────────────── */
+  .skeleton {
+    @apply rounded-lg animate-pulse;
+    background: linear-gradient(90deg,
+      rgba(26,29,48,0.6) 25%,
+      rgba(103,228,153,0.06) 50%,
+      rgba(26,29,48,0.6) 75%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* ── Confidence bars ────────────────────────────────────────────── */
+  .confidence-bar-track {
+    @apply h-2 rounded-full overflow-hidden;
+    background: rgba(255,255,255,0.06);
+  }
+  .confidence-bar-fill {
+    @apply h-2 rounded-full transition-all duration-700 ease-out;
+  }
+
+  /* ── Section header ─────────────────────────────────────────────── */
+  .section-label {
+    @apply text-xs font-bold uppercase tracking-widest;
+    color: var(--text-muted);
+  }
+
+  /* ── Divider ────────────────────────────────────────────────────── */
+  .divider {
+    @apply w-full h-px;
+    background: var(--surface-border);
+  }
+
+  /* ── Navigation items ───────────────────────────────────────────── */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
+    color: var(--text-secondary);
+  }
+  .nav-item:hover {
+    background: rgba(103, 228, 153, 0.07);
+    color: var(--text-primary);
+  }
+  .nav-item.active {
+    background: rgba(103, 228, 153, 0.12);
+    color: var(--text-green);
+    border: 1px solid rgba(103, 228, 153, 0.2);
+  }
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+/* ═══════════════════════════════════════════════════════════════════
+   LANDING PAGE SPECIFICS
+═══════════════════════════════════════════════════════════════════ */
+
+.hero-bg {
+  background: radial-gradient(ellipse 80% 60% at 50% -10%,
+    rgba(143, 99, 244, 0.18) 0%,
+    rgba(103, 228, 153, 0.06) 50%,
+    transparent 70%),
+    radial-gradient(ellipse 50% 80% at 85% 50%,
+    rgba(143, 99, 244, 0.08) 0%,
+    transparent 60%),
+    var(--surface-base);
+}
+
+.neural-gradient {
+  background: linear-gradient(135deg, var(--green-300) 0%, var(--purple-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-dot {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WORKSPACE LAYOUT
+═══════════════════════════════════════════════════════════════════ */
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  grid-template-rows: 1fr;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--surface-base);
+}
+
+.workspace-left  { overflow-y: auto; }
+.workspace-center { overflow: hidden; display: flex; flex-direction: column; }
+.workspace-right { overflow-y: auto; }
+
+/* MRI viewer controls */
+.mri-viewer {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+.mri-viewer canvas { display: block; }
+.mri-control-btn {
+  @apply rounded-lg p-2 transition-all duration-150;
+  background: rgba(0,0,0,0.6);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.mri-control-btn:hover {
+  background: rgba(103,228,153,0.12);
+  color: var(--text-green);
+  border-color: rgba(103,228,153,0.3);
+}
+
+/* Risk gauge colours */
+.risk-low    { color: var(--green-300); }
+.risk-medium { color: #fbbf24; }
+.risk-high   { color: #f87171; }
+
+/* ── Framer Motion page wrapper ─────────────────────────────────── */
+.page-motion { @apply w-full h-full; }
+
+/* ── Notifications toast ────────────────────────────────────────── */
+.toast {
+  @apply fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl;
+  backdrop-filter: blur(20px);
+  animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
+}
+.toast-success {
+  background: rgba(103, 228, 153, 0.15);
+  border: 1px solid rgba(103, 228, 153, 0.35);
+  color: var(--green-300);
+}
+.toast-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+.toast-info {
+  background: rgba(143, 99, 244, 0.15);
+  border: 1px solid rgba(143, 99, 244, 0.35);
+  color: var(--purple-200);
 }

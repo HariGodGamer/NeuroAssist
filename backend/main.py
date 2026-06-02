@@ -1,82 +1,75 @@
-from fastapi import FastAPI, Depends
+import os
+import logging
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
-from datetime import datetime
-import os
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 
-import models
-from database import engine, get_db
+from database import init_db
+from routes import auth_routes, patient_routes, scan_routes, admin_routes
 
-from routes import auth_routes, patient_routes, scan_routes
+load_dotenv()
 
-# Initialize DB tables
-models.Base.metadata.create_all(bind=engine)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
 
-# Ensure uploads directories exist
-os.makedirs("uploads/mri_scans", exist_ok=True)
-os.makedirs("uploads/gradcam", exist_ok=True)
+# Ensure upload directories exist
+for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
+    os.makedirs(d, exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup/shutdown lifecycle hook."""
+    logger.info("NeuroAssist API starting — initialising MongoDB collections & indexes …")
+    await init_db()
+    logger.info("Database ready.")
+    yield
+    logger.info("NeuroAssist API shutting down.")
+
 
 app = FastAPI(
     title="NeuroAssist API",
-    description="Backend for NeuroAssist Alzheimer's Detection System",
-    version="2.0.0",
+    description="Enterprise AI Healthcare Platform — Neurological Screening & MRI Intelligence",
+    version="3.0.0",
+    lifespan=lifespan,
 )
 
-# CORS configuration
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for the public demo deployment
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve static files (GradCAM heatmaps, uploaded scans)
+# ── Static file serving (GradCAM / uploaded scans) ───────────────────────────
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Include Routers
+# ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth_routes.router)
 app.include_router(patient_routes.router)
 app.include_router(scan_routes.router)
+app.include_router(admin_routes.router)
 
 
 @app.get("/")
-def read_root():
-    return {"status": "ok", "app": "NeuroAssist API", "version": "2.0.0"}
-
-
-@app.get("/api/debug/status")
-def debug_status(db: Session = Depends(get_db)):
-    """
-    Dev-only endpoint returning system status for the Settings page.
-    Shows DB stats, loaded models, and server info.
-    """
-    db_path = os.path.abspath("neuroassist.db")
-    db_size_mb = 0.0
-    if os.path.isfile(db_path):
-        db_size_mb = round(os.path.getsize(db_path) / (1024 * 1024), 2)
-
-    total_users = db.query(models.User).count()
-    total_patients = db.query(models.Patient).count()
-    total_scans = db.query(models.Scan).count()
-
+async def read_root():
     return {
-        "database_path": db_path,
-        "database_size_mb": db_size_mb,
-        "total_users": total_users,
-        "total_patients": total_patients,
-        "total_scans": total_scans,
-        "models_loaded": ["binary", "multiclass"],
-        "inference_engine": "deterministic_fallback_v2",
-        "gradcam_engine": "gaussian_blob_simulation",
-        "server_time": datetime.utcnow().isoformat(),
-        "status": "healthy",
+        "status": "ok",
+        "app": "NeuroAssist API",
+        "version": "3.0.0",
+        "database": "MongoDB Atlas (Motor async)",
+        "inference": "PyTorch ResNet-10 + SimpleITK preprocessing",
+        "explainability": "Real Grad-CAM 3D",
     }
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "healthy", "version": "3.0.0"}

@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { FaUser, FaLock, FaBell, FaPalette, FaSave, FaCheck, FaShieldAlt } from 'react-icons/fa';
+import { FaUser, FaLock, FaBell, FaPalette, FaSave, FaCheck, FaShieldAlt, FaEye, FaEyeSlash } from 'react-icons/fa';
 
 const TABS = [
     { id: 'profile', label: 'My Identity', icon: FaUser },
@@ -91,40 +91,84 @@ const ProfileTab = memo(({ user }) => (
     </div>
 ));
 
-const SecurityTab = memo(() => (
-    <div className="animate-fadeIn space-y-8 max-w-3xl">
-        <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-6">
-            <FaShieldAlt className="text-purple-400 text-xl" />
-            <div>
-                <h2 className="text-xl font-black text-white uppercase tracking-widest">Access Control</h2>
-                <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em] mt-1">Cryptographic & Authentication Policies</p>
-            </div>
-        </div>
-        
-        <div className="bg-black/20 p-6 rounded-3xl border border-white/5 shadow-inner mb-8">
-            <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" /> Cipher Key Rotation
-            </h3>
-            <div className="space-y-6">
+const SecurityTab = memo(() => {
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+    const [showVerify, setShowVerify] = useState(false);
+
+    return (
+        <div className="animate-fadeIn space-y-8 max-w-3xl">
+            <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-6">
+                <FaShieldAlt className="text-purple-400 text-xl" />
                 <div>
-                    <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">Current Cipher</label>
-                    <input type="password" placeholder="••••••••" className="w-full md:w-1/2 bg-black/40 border border-white/5 rounded-2xl py-4 px-5 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" />
+                    <h2 className="text-xl font-black text-white uppercase tracking-widest">Access Control</h2>
+                    <p className="text-[10px] text-text-secondary font-bold uppercase tracking-[0.2em] mt-1">Cryptographic & Authentication Policies</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">New Cipher</label>
-                        <input type="password" placeholder="••••••••" className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-5 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">Verify Cipher</label>
-                        <input type="password" placeholder="••••••••" className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-5 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" />
-                    </div>
-                </div>
-                <button className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 font-black py-3 px-6 rounded-xl transition-all uppercase text-[10px] tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                    Engage Key Rotation
-                </button>
             </div>
-        </div>
+            
+            <div className="bg-black/20 p-6 rounded-3xl border border-white/5 shadow-inner mb-8">
+                <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" /> Cipher Key Rotation
+                </h3>
+                <div className="space-y-6">
+                    <div>
+                        <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">Current Cipher</label>
+                        <div className="relative w-full md:w-1/2">
+                            <input 
+                                type={showCurrent ? "text" : "password"} 
+                                placeholder="••••••••" 
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" 
+                            />
+                            <button
+                                type="button"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                onClick={() => setShowCurrent(!showCurrent)}
+                            >
+                                {showCurrent ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">New Cipher</label>
+                            <div className="relative w-full">
+                                <input 
+                                    type={showNew ? "text" : "password"} 
+                                    placeholder="••••••••" 
+                                    className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" 
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    onClick={() => setShowNew(!showNew)}
+                                >
+                                    {showNew ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-text-secondary font-black mb-2 uppercase tracking-[0.2em] block">Verify Cipher</label>
+                            <div className="relative w-full">
+                                <input 
+                                    type={showVerify ? "text" : "password"} 
+                                    placeholder="••••••••" 
+                                    className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-5 pr-12 text-sm text-white focus:border-purple-500/50 focus:ring-4 focus:ring-purple-500/10 focus:outline-none shadow-inner transition-all font-mono" 
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    onClick={() => setShowVerify(!showVerify)}
+                                >
+                                    {showVerify ? <FaEyeSlash className="text-xs" /> : <FaEye className="text-xs" />}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 font-black py-3 px-6 rounded-xl transition-all uppercase text-[10px] tracking-[0.2em] shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+                        Engage Key Rotation
+                    </button>
+                </div>
+            </div>
 
         <div className="bg-black/20 p-6 rounded-3xl border border-white/5 shadow-inner">
             <h3 className="text-xs font-black text-white uppercase tracking-[0.2em] mb-6 flex items-center gap-2">

@@ -46,3 +46,6 @@ test.csv
 node_modules/
 dashboard_react/node_modules/
 dashboard_react/build/
+
+# Uploads
+backend/uploads/

@@ -1,85 +1,105 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Enum
-from sqlalchemy.orm import relationship
-import datetime
-from database import Base
-import enum
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+from enum import Enum
 
-
-class RoleEnum(str, enum.Enum):
+class RoleEnum(str, Enum):
     doctor = "doctor"
     patient = "patient"
+    admin = "admin"
 
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    role: RoleEnum
 
-class User(Base):
-    __tablename__ = "users"
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    full_name: str
+    role: RoleEnum
+    created_at: datetime
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
-    full_name = Column(String)
-    role = Column(Enum(RoleEnum), default=RoleEnum.patient)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    class Config:
+        from_attributes = True
 
-    # A doctor manages many patients
-    patients = relationship("Patient", back_populates="doctor", foreign_keys="[Patient.doctor_id]")
+class PatientCreate(BaseModel):
+    full_name: str
+    date_of_birth: str
+    gender: str
+    contact: str = ""
+    medical_history: str = ""
 
+class PatientResponse(BaseModel):
+    id: str
+    patient_code: str
+    doctor_id: str
+    user_id: Optional[str] = None
+    full_name: str
+    date_of_birth: str
+    gender: str
+    contact: str = ""
+    medical_history: str = ""
+    doctor_notes: str = ""
+    scan_count: int = 0
 
-class Patient(Base):
-    __tablename__ = "patients"
+class Biomarkers(BaseModel):
+    hippocampal_atrophy: Optional[float] = None
+    amyloid_plaque_load: Optional[float] = None
+    ventricle_enlargement: Optional[float] = None
 
-    id = Column(Integer, primary_key=True, index=True)
-    patient_code = Column(String, unique=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    doctor_id = Column(Integer, ForeignKey("users.id"))
+class ScanResponse(BaseModel):
+    scan_id: str
+    patient_id: str
+    patient_name: str
+    patient_code: str
+    prediction: str
+    confidence_cn: float
+    confidence_mci: float
+    confidence_ad: float
+    risk_score: float
+    urgency: str
+    processing_time: Optional[float] = None
+    model_used: str
+    file_hash: Optional[str] = None
+    original_filename: Optional[str] = None
+    scan_date: Optional[str] = None
+    status: str
+    doctor_diagnosis: Optional[str] = None
+    doctor_notes: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    biomarkers: Biomarkers
+    gradcam_slices: Dict[str, str]
+    brain_regions: Dict[str, float]
 
-    full_name = Column(String)
-    date_of_birth = Column(String)
-    gender = Column(String)
-    contact = Column(String, nullable=True)
-    medical_history = Column(Text, nullable=True)
-    doctor_notes = Column(Text, nullable=True)
+class ReviewRequest(BaseModel):
+    action: str  # ACCEPT FINDING, FLAG FOR REVIEW, OVERRIDE DIAGNOSIS
+    doctor_diagnosis: Optional[str] = None
+    doctor_notes: Optional[str] = None
 
-    doctor = relationship("User", foreign_keys=[doctor_id], back_populates="patients")
-    scans = relationship("Scan", back_populates="patient")
+class AuditLogCreate(BaseModel):
+    user_id: str
+    user_email: str
+    action: str
+    details: str
 
+class SettingsUpdate(BaseModel):
+    active_model: str
+    auto_archive: bool
+    notifications_enabled: bool
 
-class Scan(Base):
-    __tablename__ = "scans"
+# Document conversion utilities for MongoDB
+def serialize_doc(doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Convert ObjectId '_id' to string 'id' for JSON response."""
+    if not doc:
+        return None
+    serialized = dict(doc)
+    if "_id" in serialized:
+        serialized["id"] = str(serialized["_id"])
+        del serialized["_id"]
+    return serialized
 
-    id = Column(Integer, primary_key=True, index=True)
-    scan_id_string = Column(String, unique=True, index=True)
-    patient_id = Column(Integer, ForeignKey("patients.id"))
-
-    upload_date = Column(DateTime, default=datetime.datetime.utcnow)
-    filename = Column(String)
-    original_filename = Column(String, nullable=True)
-    file_hash = Column(String, nullable=True)
-    model_used = Column(String)
-
-    # AI Predictions
-    prediction = Column(String)  # CN, MCI, AD
-    conf_cn = Column(Float)
-    conf_mci = Column(Float)
-    conf_ad = Column(Float)
-    risk_score = Column(Float)  # 0-100
-    urgency = Column(String)  # routine, priority, urgent
-    processing_time = Column(Float, nullable=True)
-
-    # Biomarkers
-    biomarker_hippocampal = Column(Float, nullable=True)
-    biomarker_amyloid = Column(Float, nullable=True)
-    biomarker_ventricle = Column(Float, nullable=True)
-
-    # Grad-CAM
-    gradcam_axial = Column(String, nullable=True)
-    gradcam_coronal = Column(String, nullable=True)
-    gradcam_sagittal = Column(String, nullable=True)
-    brain_regions_json = Column(Text, nullable=True)  # JSON string
-
-    # Clinical Review
-    status = Column(String, default="pending")
-    doctor_diagnosis = Column(String, nullable=True)
-    doctor_notes = Column(Text, nullable=True)
-    reviewed_at = Column(DateTime, nullable=True)
-
-    patient = relationship("Patient", back_populates="scans")
+def serialize_docs(docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert list of MongoDB documents."""
+    return [serialize_doc(d) for d in docs if d]

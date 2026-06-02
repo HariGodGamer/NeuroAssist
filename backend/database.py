@@ -1,28 +1,54 @@
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+import logging
+from motor.motor_asyncio import AsyncIOMotorClient
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./neuroassist.db")
+logger = logging.getLogger(__name__)
 
-# Standardize database URLs for SQLAlchemy 1.4/2.0+
-if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Fetch MongoDB URI from environment variables or use a default local connection
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/neuroassist")
 
-# Ensure the psycopg2 driver is explicitly used for PostgreSQL URLs
-if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+# Parse DB name from the connection string if present
+db_name = "neuroassist"
+try:
+    if "://" in MONGODB_URI:
+        parts = MONGODB_URI.split("://")[1].split("/")
+        if len(parts) > 1 and parts[1]:
+            db_name = parts[1].split("?")[0]
+except Exception as e:
+    logger.warning(f"Could not parse DB name from MONGODB_URI: {e}. Defaulting to '{db_name}'.")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+client = AsyncIOMotorClient(MONGODB_URI)
+db = client[db_name]
 
-Base = declarative_base()
+# Expose collection handles
+users_col = db["users"]
+patients_col = db["patients"]
+scans_col = db["scans"]
+reports_col = db["reports"]
+review_queue_col = db["reviewQueue"]
+notifications_col = db["notifications"]
+audit_logs_col = db["auditLogs"]
+settings_col = db["settings"]
 
-def get_db():
-    db = SessionLocal()
+async def init_db():
+    """Create unique indexes and compound query indexes in MongoDB Atlas."""
     try:
-        yield db
-    finally:
-        db.close()
+        # Unique constraints
+        await users_col.create_index("email", unique=True)
+        await patients_col.create_index("patient_code", unique=True)
+        await scans_col.create_index("scan_id_string", unique=True)
+        await review_queue_col.create_index("scan_id_string", unique=True)
+        
+        # Performance indexes for lookups
+        await patients_col.create_index("doctor_id")
+        await patients_col.create_index("user_id")
+        await scans_col.create_index("patient_id")
+        await audit_logs_col.create_index("timestamp")
+        
+        logger.info("MongoDB collections and indexes initialized successfully.")
+    except Exception as e:
+        logger.error(f"Failed to initialize MongoDB indexes: {e}")
+
+async def get_db():
+    """Dependency provider yielding the MongoDB database instance."""
+    yield db
