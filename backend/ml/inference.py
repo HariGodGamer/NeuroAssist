@@ -226,7 +226,7 @@ def run_inference(file_path: str, model_type: str = "multiclass") -> dict:
         prediction = ["CN", "MCI", "AD"][pred_idx]
         
     except Exception as e:
-        logger.error(f"Real PyTorch/SimpleITK inference failed: {e}. Falling back to simulation.")
+        logger.exception("Real PyTorch/SimpleITK inference failed")
         # Generate simulated preprocessed brain array for fallback visualization
         vol_array = _generate_simulated_brain_array()
         
