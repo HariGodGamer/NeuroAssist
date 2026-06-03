@@ -1,3 +1,13 @@
+---
+title: NeuroAssist
+emoji: 🧠
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🧠 NeuroAssist: AI-Powered Neurological Disorder Detection, Classification, Assessment
 
 Deep learning system for T1-weighted MRI brain scans to detect and classify neurological conditions:
