@@ -1,12 +1,4 @@
----
-title: NeuroAssist
-emoji: 🧠
-colorFrom: purple
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
----
+
 
 # 🧠 NeuroAssist: AI-Powered Neurological Disorder Detection, Classification, Assessment
 
@@ -16,7 +8,7 @@ Deep learning system for T1-weighted MRI brain scans to detect and classify neur
 - **AD** (Alzheimer's Disease) — Diagnosed dementia
 
 ## 🌐 Live Demo
-Experience the AI Dashboard live: [**Launch NeuroAssist**](https://dashboard-react-pi-mauve.vercel.app)
+Experience the AI Dashboard live: [**Launch NeuroAssist**](https://neuroassist-ten.vercel.app/)
 
 ## 🎯 Performance (MedicalNet Transfer Learning)
 
@@ -131,7 +123,7 @@ python Task2_binary_classifier.py
 ```
 
 ## 🌐 Live Demo
-Experience the AI Dashboard live: [**Launch NeuroAssist**](https://dashboard-react-pi-mauve.vercel.app)
+Experience the AI Dashboard live: [**Launch NeuroAssist**](https://neuroassist-ten.vercel.app/)
 
 ---
 
