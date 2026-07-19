@@ -1,4 +1,11 @@
-
+---
+title: NeuroAssist
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
 
 # 🧠 NeuroAssist: AI-Powered Neurological Disorder Detection, Classification, Assessment
 
