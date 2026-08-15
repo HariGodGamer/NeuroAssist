@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 
 import models
-from database import users_col, patients_col
+from database import users_col, patients_col, generate_unique_patient_code
 from auth import (
     verify_password,
     get_password_hash,
@@ -67,9 +67,7 @@ async def register_user(user: models.UserCreate):
             )
         else:
             # Create a brand new patient profile
-            count = await patients_col.count_documents({})
-            year = datetime.utcnow().year
-            code = f"NA-{year}-{str(count + 1).zfill(4)}"
+            code = await generate_unique_patient_code()
             await patients_col.insert_one({
                 "patient_code": code,
                 "doctor_id": None,
@@ -130,9 +128,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
                     {"$set": {"user_id": user_id}}
                 )
             else:
-                count = await patients_col.count_documents({})
-                year = datetime.utcnow().year
-                code = f"NA-{year}-{str(count + 1).zfill(4)}"
+                code = await generate_unique_patient_code()
                 await patients_col.insert_one({
                     "patient_code": code,
                     "doctor_id": None,

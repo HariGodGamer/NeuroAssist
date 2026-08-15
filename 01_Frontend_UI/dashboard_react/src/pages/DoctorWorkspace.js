@@ -185,7 +185,9 @@ const DoctorWorkspace = () => {
       const newP = refreshRes.data.find(p => p.patient_code === data.patient_code) || data;
       handleSelectPatient(newP);
     } catch (err) {
-      triggerToast("Failed to compile new clinical patient profile.");
+      const detail = err.response?.data?.detail;
+      const msg = typeof detail === 'string' ? detail : (Array.isArray(detail) ? detail[0]?.msg : "Failed to compile new clinical patient profile.");
+      triggerToast(msg);
     }
   };
 

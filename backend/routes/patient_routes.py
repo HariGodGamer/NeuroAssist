@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 
 import models
-from database import patients_col, scans_col, users_col
+from database import patients_col, scans_col, users_col, generate_unique_patient_code
 from auth import get_current_user, require_role
 from utils.audit import log_audit
 
@@ -16,9 +16,7 @@ async def create_patient(
     current_user: dict = Depends(require_role(["doctor"]))
 ):
     # Generate unique patient code: NA-YYYY-NNNN
-    count = await patients_col.count_documents({})
-    year = datetime.now().year
-    code = f"NA-{year}-{str(count + 1).zfill(4)}"
+    code = await generate_unique_patient_code()
     
     # Check if a patient user account exists with this email/contact or if they are created by doctor
     # For now, patient is created directly by doctor.
@@ -66,7 +64,7 @@ async def get_patients(
     
     # Query logic depending on user role
     if role == "doctor":
-        cursor = patients_col.find({"doctor_id": user_id})
+        cursor = patients_col.find({"$or": [{"doctor_id": user_id}, {"doctor_id": None}]})
     elif role == "patient":
         # Search patient profiles linked to this user ID
         cursor = patients_col.find({"user_id": user_id})
@@ -120,7 +118,7 @@ async def get_patient(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Unauthorized patient"
         )
-    if role == "doctor" and patient.get("doctor_id") != user_id:
+    if role == "doctor" and patient.get("doctor_id") and patient.get("doctor_id") != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: Patient belongs to another clinician"
