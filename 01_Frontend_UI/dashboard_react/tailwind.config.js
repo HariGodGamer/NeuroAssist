@@ -5,92 +5,107 @@ module.exports = {
     theme: {
         extend: {
             colors: {
-                // ── Primary Green palette ──────────────────────────────────
-                green: {
-                    50:  '#f0fdf6',
-                    100: '#dcfce9',
-                    200: '#a0e8af',
-                    300: '#67e499',
-                    400: '#3dd678',
-                    500: '#22c55e',
-                    600: '#16a34a',
-                    700: '#15803d',
-                    800: '#166534',
-                    900: '#14532d',
+                // ── Clinical Warm Palette (Deck Theme) ──────────────────────
+                cream: {
+                    50:  '#FAF6F3',
+                    100: '#F7F1EC',
+                    200: '#F0E8E1',
+                    300: '#E8DDD4',
+                    400: '#D8C9BC',
                 },
-                // ── Primary Purple palette ─────────────────────────────────
-                purple: {
-                    50:  '#faf5ff',
-                    100: '#eae8ff',
-                    200: '#caa8f5',
-                    300: '#b084f0',
-                    400: '#9d60f6',
-                    500: '#8f63f4',
-                    600: '#7c3aed',
-                    700: '#6d28d9',
-                    800: '#5b21b6',
-                    900: '#4c1d95',
+                maroon: {
+                    50:  '#FDF2F4',
+                    100: '#F8EAED',
+                    200: '#ECC8CF',
+                    300: '#D998A4',
+                    400: '#B84E60',
+                    500: '#8C2433',
+                    600: '#7A1F2B', // Main clinical brand maroon
+                    700: '#5E1620',
+                    800: '#461017',
+                    900: '#2E090E',
                 },
-                // ── Surface tokens ─────────────────────────────────────────
+                slate: {
+                    50:  '#F4F7FA',
+                    100: '#E8EFF5',
+                    200: '#CFDEEB',
+                    300: '#A3BFD6',
+                    400: '#799EBE',
+                    500: '#5B7C99', // Muted secondary slate blue
+                    600: '#48647D',
+                    700: '#354B5E',
+                    800: '#263745',
+                    900: '#18232C',
+                },
+                charcoal: {
+                    50:  '#F7F6F5',
+                    100: '#EFECE9',
+                    200: '#D5D0CB',
+                    300: '#ABA49E',
+                    400: '#7A756F', // Secondary muted text
+                    500: '#5A5550',
+                    600: '#443F3B',
+                    700: '#332F2C',
+                    800: '#282523',
+                    900: '#22201F', // Near-black charcoal primary text
+                },
+                // ── Clinical Status Desaturated Colors ─────────────────────
+                sage: {
+                    50:  '#F2F7F4',
+                    100: '#EDF5F0',
+                    200: '#CFE3D5',
+                    500: '#4A7C59', // CN status green
+                    700: '#2E523A',
+                    800: '#1C3624',
+                },
+                amber: {
+                    50:  '#FDF8F0',
+                    100: '#FAF3E8',
+                    200: '#F0DEC2',
+                    500: '#B87326', // MCI status amber
+                    700: '#8A5A14',
+                    800: '#5E3D0A',
+                },
                 surface: {
-                    base:    '#0d0f1a',
-                    raised:  '#131625',
-                    overlay: '#1a1d30',
-                    border:  'rgba(103,228,153,0.12)',
+                    card: '#FFFFFF',
+                    border: '#E8E2DA',
+                    borderLight: '#F0EBE5',
+                    hairline: 'rgba(34, 32, 31, 0.08)',
                 },
             },
             fontFamily: {
-                sans:    ['Inter', 'sans-serif'],
-                display: ['Outfit', 'sans-serif'],
+                sans:    ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                serif:   ['Fraunces', 'Newsreader', 'Georgia', 'serif'],
+                display: ['Fraunces', 'Georgia', 'serif'],
+            },
+            boxShadow: {
+                'clinical-sm': '0 1px 3px rgba(34, 32, 31, 0.04), 0 1px 2px rgba(34, 32, 31, 0.02)',
+                'clinical':    '0 2px 8px rgba(34, 32, 31, 0.04), 0 1px 2px rgba(34, 32, 31, 0.02)',
+                'clinical-md': '0 4px 16px rgba(34, 32, 31, 0.06), 0 2px 4px rgba(34, 32, 31, 0.03)',
+                'clinical-lg': '0 10px 30px rgba(34, 32, 31, 0.08), 0 4px 8px rgba(34, 32, 31, 0.04)',
+                'clinical-hover': '0 6px 20px rgba(34, 32, 31, 0.08)',
+            },
+            borderRadius: {
+                'clinical': '14px',
             },
             animation: {
-                'spin-slow':   'spin 8s linear infinite',
-                'pulse-slow':  'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
-                'float':       'float 6s ease-in-out infinite',
-                'glow-pulse':  'glowPulse 3s ease-in-out infinite',
-                'slide-up':    'slideUp 0.5s cubic-bezier(0.16,1,0.3,1)',
-                'slide-in':    'slideIn 0.4s cubic-bezier(0.16,1,0.3,1)',
-                'fade-in':     'fadeIn 0.4s ease-out',
-                'shimmer':     'shimmer 2s infinite',
-                'neural':      'neuralFlow 4s ease-in-out infinite',
+                'fade-in': 'fadeIn 0.25s ease-out',
+                'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                'subtle-pulse': 'subtlePulse 3s ease-in-out infinite',
             },
             keyframes: {
-                float: {
-                    '0%,100%': { transform: 'translateY(0px)' },
-                    '50%':     { transform: 'translateY(-12px)' },
-                },
-                glowPulse: {
-                    '0%,100%': { boxShadow: '0 0 20px rgba(103,228,153,0.2)' },
-                    '50%':     { boxShadow: '0 0 40px rgba(103,228,153,0.5)' },
-                },
-                slideUp: {
-                    '0%':   { opacity: '0', transform: 'translateY(24px)' },
-                    '100%': { opacity: '1', transform: 'translateY(0)' },
-                },
-                slideIn: {
-                    '0%':   { opacity: '0', transform: 'translateX(-24px)' },
-                    '100%': { opacity: '1', transform: 'translateX(0)' },
-                },
                 fadeIn: {
-                    '0%':   { opacity: '0' },
+                    '0%': { opacity: '0' },
                     '100%': { opacity: '1' },
                 },
-                shimmer: {
-                    '0%':   { backgroundPosition: '-400% 0' },
-                    '100%': { backgroundPosition: '400% 0' },
+                slideUp: {
+                    '0%': { opacity: '0', transform: 'translateY(12px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
                 },
-                neuralFlow: {
-                    '0%,100%': { strokeDashoffset: '0' },
-                    '50%':     { strokeDashoffset: '100' },
+                subtlePulse: {
+                    '0%, 100%': { opacity: '1' },
+                    '50%': { opacity: '0.85' },
                 },
-            },
-            backdropBlur: { xs: '2px' },
-            boxShadow: {
-                'glass':        '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
-                'glow-green':   '0 0 30px rgba(103,228,153,0.25)',
-                'glow-purple':  '0 0 30px rgba(143,99,244,0.25)',
-                'panel':        '0 4px 24px rgba(0,0,0,0.5)',
-                'card-hover':   '0 8px 40px rgba(103,228,153,0.15)',
             },
         },
     },

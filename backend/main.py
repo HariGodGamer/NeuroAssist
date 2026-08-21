@@ -66,7 +66,6 @@ async def read_root():
         "version": "3.0.0",
         "database": "MongoDB Atlas (Motor async)",
         "inference": "PyTorch ResNet-10 + SimpleITK preprocessing",
-        "explainability": "Real Grad-CAM 3D",
     }
 
 

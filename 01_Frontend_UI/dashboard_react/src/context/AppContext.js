@@ -1,133 +1,365 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { authAPI } from '../services/api';
+const DEFAULT_PATIENTS = [];
+const DEFAULT_SCANS = [];
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:8000";
+// Demo names to clean from persistent state
+const DEMO_NAMES = [
+  'margaret davies',
+  'eleanor vance',
+  'robert chen',
+  'james thorne',
+  'arthur pendelton',
+  'helen mirren-shaw',
+];
 
-export const apiCall = async (endpoint, options = {}) => {
-    const token = localStorage.getItem('na_token');
-    return fetch(API_BASE_URL + endpoint, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : '',
-            ...options.headers
-        }
-    });
-};
-
-// Initial State
-const initialState = {
-    theme: (typeof window !== 'undefined' ? localStorage.getItem('theme') : null) || 'medical',
-    auth: {
-        token: localStorage.getItem('na_token') || null,
-        user: JSON.parse(localStorage.getItem('na_user') || 'null'),
-        isLoading: true
-    },
-    language: (typeof window !== 'undefined' ? localStorage.getItem('language') : null) || 'en',
-    notifications: [],
-    isSidebarOpen: true,
-    isProcessing: false,
-    processStep: 0,
-    processStatus: '',
-    result: null,
-    records: [],
-};
-
-// Reducer
-const appReducer = (state, action) => {
-    switch (action.type) {
-        case 'SET_THEME':
-            if (typeof window !== 'undefined') localStorage.setItem('theme', action.payload);
-            return { ...state, theme: action.payload };
-        case 'SET_LANGUAGE':
-            if (typeof window !== 'undefined') localStorage.setItem('language', action.payload);
-            return { ...state, language: action.payload };
-        case 'TOGGLE_SIDEBAR':
-            return { ...state, isSidebarOpen: !state.isSidebarOpen };
-        case 'SET_PROCESSING':
-            return { ...state, isProcessing: action.payload };
-        case 'UPDATE_PROGRESS':
-            return {
-                ...state,
-                processStep: action.payload.progress,
-                processStatus: action.payload.status
-            };
-        case 'SET_RESULT':
-            return { ...state, result: action.payload, isProcessing: false };
-        case 'RESET_DASHBOARD':
-            return { ...state, processStep: 0, processStatus: '', result: null };
-        case 'ADD_NOTIFICATION':
-            return {
-                ...state,
-                notifications: [
-                    { id: Date.now(), ...action.payload, time: 'Just now' },
-                    ...state.notifications
-                ]
-            };
-        case 'CLEAR_NOTIFICATIONS':
-            return { ...state, notifications: [] };
-        
-        // New Auth Actions
-        case 'SET_USER':
-            return {
-                ...state,
-                auth: {
-                    ...state.auth,
-                    user: action.payload,
-                    token: localStorage.getItem('na_token'), // Also sync token into state
-                    isLoading: false
-                }
-            };
-        case 'LOGOUT':
-            localStorage.removeItem('na_token');
-            localStorage.removeItem('na_user');
-            window.location.href = '/login';
-            return {
-                ...state,
-                auth: {
-                    token: null,
-                    user: null,
-                    isLoading: false
-                }
-            };
-        case 'AUTH_LOADED':
-            return {
-                ...state,
-                auth: {
-                    ...state.auth,
-                    isLoading: false
-                }
-            };
-        case 'SET_TOKEN':
-            return {
-                ...state,
-                auth: {
-                    ...state.auth,
-                    token: action.payload,
-                    isLoading: false
-                }
-            };
-        default:
-            return state;
+// Helper to load or initialize persisted list (excluding any demo data)
+function getInitialPatients() {
+  try {
+    const saved = localStorage.getItem('na_patients');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter(
+          (p) => !DEMO_NAMES.includes((p.full_name || p.name || '').trim().toLowerCase())
+        );
+        // Deduplicate existing patients by normalized name or ID/MRN
+        const dedupMap = new Map();
+        cleaned.forEach((p) => {
+          const nameKey = (p.full_name || p.name || '').trim().toLowerCase();
+          const key = nameKey || p.id || p._id;
+          if (!dedupMap.has(key)) {
+            dedupMap.set(key, p);
+          } else {
+            const ex = dedupMap.get(key);
+            dedupMap.set(key, { ...p, ...ex });
+          }
+        });
+        const result = Array.from(dedupMap.values());
+        localStorage.setItem('na_patients', JSON.stringify(result));
+        return result;
+      }
     }
+  } catch (e) {
+    console.warn('Error reading saved patients from localStorage:', e);
+  }
+  return DEFAULT_PATIENTS;
+}
+
+function getInitialScans() {
+  try {
+    const saved = localStorage.getItem('na_scans');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter(
+          (s) => !DEMO_NAMES.includes((s.patientName || s.patient || '').trim().toLowerCase())
+        );
+        // Deduplicate duplicate scans per patient
+        const seenPatients = new Map();
+        cleaned.forEach((s) => {
+          const pKey = (s.patientName || s.patient || s.patientId || s.patient_id || '').trim().toLowerCase();
+          if (pKey && !seenPatients.has(pKey)) {
+            seenPatients.set(pKey, s);
+          } else if (!pKey) {
+            seenPatients.set(s.scanId || s.id, s);
+          }
+        });
+        const result = Array.from(seenPatients.values());
+        localStorage.setItem('na_scans', JSON.stringify(result));
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading saved scans from localStorage:', e);
+  }
+  return DEFAULT_SCANS;
+}
+
+const initialState = {
+  auth: {
+    token: localStorage.getItem('na_token') || null,
+    user: JSON.parse(localStorage.getItem('na_user') || 'null'),
+    isLoading: true,
+  },
+  patients: getInitialPatients(),
+  scans: getInitialScans(),
+  notifications: [],
+  settings: {
+    mciThreshold: 50,
+    adAlertThreshold: 75,
+    gradcamSensitivity: 0.85,
+    activeModel: 'medicalnet-resnet10',
+    autoGeneratePdf: true,
+    clinicName: '',
+    physicianName: '',
+    emailAlerts: true,
+  },
+  activeScanId: null,
 };
 
-// Context
+function appReducer(state, action) {
+  switch (action.type) {
+    case 'SET_AUTH':
+      return {
+        ...state,
+        auth: {
+          token: action.payload.token,
+          user: action.payload.user,
+          isLoading: false,
+        },
+      };
+    case 'AUTH_LOADED':
+      return {
+        ...state,
+        auth: { ...state.auth, isLoading: false },
+      };
+    case 'LOGOUT':
+      localStorage.removeItem('na_token');
+      localStorage.removeItem('na_refresh');
+      localStorage.removeItem('na_user');
+      return {
+        ...initialState,
+        auth: { token: null, user: null, isLoading: false },
+      };
+    case 'SET_PATIENTS': {
+      const p = action.payload;
+      const fetchedList = Array.isArray(p) ? p : (p?.patients || p?.items || []);
+      // If backend returned empty list, preserve current existing patients so dashboard is never 0!
+      if (fetchedList.length === 0) {
+        return state;
+      }
+      // Merge fetched with existing unique local patients (deduplicate by normalized name or ID)
+      const mergedMap = new Map();
+      fetchedList.forEach((pat) => {
+        const nameKey = (pat.full_name || pat.name || '').trim().toLowerCase();
+        const key = nameKey || pat.id || pat._id;
+        mergedMap.set(key, pat);
+      });
+
+      (state.patients || []).forEach((pat) => {
+        const nameKey = (pat.full_name || pat.name || '').trim().toLowerCase();
+        const key = nameKey || pat.id || pat._id;
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, pat);
+        } else {
+          const backendPat = mergedMap.get(key);
+          mergedMap.set(key, {
+            ...pat,
+            ...backendPat,
+            scan_count: Math.max(backendPat.scan_count || 0, pat.scan_count || pat.scansCount || 0),
+            scansCount: Math.max(backendPat.scan_count || 0, pat.scan_count || pat.scansCount || 0),
+            condition: pat.condition || backendPat.condition || backendPat.diagnosis || 'CN',
+            diagnosis: pat.diagnosis || backendPat.diagnosis || pat.condition || 'CN',
+            riskScore: pat.riskScore ?? backendPat.riskScore,
+          });
+        }
+      });
+      const finalList = Array.from(mergedMap.values());
+      try {
+        localStorage.setItem('na_patients', JSON.stringify(finalList));
+      } catch (e) {}
+      return { ...state, patients: finalList };
+    }
+    case 'ADD_PATIENT': {
+      const newPatient = action.payload;
+      const current = Array.isArray(state.patients) ? state.patients : [];
+      const newNameLower = (newPatient.full_name || newPatient.name || '').trim().toLowerCase();
+      const newId = newPatient.id || newPatient._id;
+      const updated = [
+        newPatient,
+        ...current.filter((p) => {
+          const id = p.id || p._id;
+          const nameLower = (p.full_name || p.name || '').trim().toLowerCase();
+          return id !== newId && nameLower !== newNameLower;
+        }),
+      ];
+      try {
+        localStorage.setItem('na_patients', JSON.stringify(updated));
+      } catch (e) {}
+      return { ...state, patients: updated };
+    }
+    case 'DELETE_PATIENT': {
+      const targetId = action.payload;
+      const updatedPatients = (state.patients || []).filter(
+        (p) => (p.id || p._id) !== targetId
+      );
+      const updatedScans = (state.scans || []).filter(
+        (s) => (s.patientId || s.patient_id) !== targetId
+      );
+      try {
+        localStorage.setItem('na_patients', JSON.stringify(updatedPatients));
+        localStorage.setItem('na_scans', JSON.stringify(updatedScans));
+      } catch (e) {}
+      return {
+        ...state,
+        patients: updatedPatients,
+        scans: updatedScans,
+      };
+    }
+    case 'SET_SCANS': {
+      const s = action.payload;
+      const fetchedList = Array.isArray(s) ? s : (s?.scans || s?.items || []);
+      if (fetchedList.length === 0) {
+        return state;
+      }
+      const mergedMap = new Map();
+      fetchedList.forEach((sc) => mergedMap.set(sc.scanId || sc.scan_id_string || sc.id, sc));
+      state.scans.forEach((sc) => {
+        const id = sc.scanId || sc.scan_id_string || sc.id;
+        if (!mergedMap.has(id)) mergedMap.set(id, sc);
+      });
+      const finalList = Array.from(mergedMap.values());
+      try {
+        localStorage.setItem('na_scans', JSON.stringify(finalList));
+      } catch (e) {}
+      return { ...state, scans: finalList };
+    }
+    case 'DELETE_SCAN': {
+      const targetScanId = action.payload;
+      const updatedScans = (state.scans || []).filter(
+        (s) => (s.scanId || s.scan_id_string || s.id) !== targetScanId
+      );
+      try {
+        localStorage.setItem('na_scans', JSON.stringify(updatedScans));
+      } catch (e) {}
+      return {
+        ...state,
+        scans: updatedScans,
+      };
+    }
+    case 'ADD_SCAN': {
+      const newScan = action.payload;
+      const scanId = newScan.scanId || newScan.scan_id_string || newScan.id;
+      const currentScans = Array.isArray(state.scans) ? state.scans : [];
+      const targetPatientId = newScan.patientId || newScan.patient_id;
+      const targetPatientName = (newScan.patientName || newScan.patient || '').toLowerCase();
+      
+      // Deduplicate scans: keep single latest scan per patient and deduplicate by scan ID
+      const updatedScans = [
+        newScan,
+        ...currentScans.filter((s) => {
+          const sId = s.scanId || s.scan_id_string || s.id;
+          const sPId = s.patientId || s.patient_id;
+          const sPName = (s.patientName || s.patient || '').toLowerCase();
+          if (sId === scanId) return false;
+          if (targetPatientId && sPId === targetPatientId) return false;
+          if (targetPatientName && sPName === targetPatientName) return false;
+          return true;
+        }),
+      ];
+      const updatedPatients = (state.patients || []).map((pat) => {
+        const pId = pat.id || pat._id;
+        const pName = (pat.full_name || pat.name || '').toLowerCase();
+        if (pId === targetPatientId || (targetPatientName && pName === targetPatientName)) {
+          const currentCount = pat.scansCount || pat.scan_count || 0;
+          return {
+            ...pat,
+            scan_count: currentCount + 1,
+            scansCount: currentCount + 1,
+            lastScanDate: newScan.date || newScan.uploadDate || new Date().toISOString().split('T')[0],
+            condition: newScan.prediction || pat.condition,
+            diagnosis: newScan.prediction || pat.diagnosis,
+            riskScore: newScan.riskScore || pat.riskScore,
+          };
+        }
+        return pat;
+      });
+
+      try {
+        localStorage.setItem('na_scans', JSON.stringify(updatedScans));
+        localStorage.setItem('na_patients', JSON.stringify(updatedPatients));
+      } catch (e) {}
+
+      return {
+        ...state,
+        scans: updatedScans,
+        patients: updatedPatients,
+        activeScanId: scanId,
+      };
+    }
+    case 'UPDATE_SCAN_DECISION': {
+      const updatedScans = state.scans.map((s) => {
+        const id = s.scanId || s.scan_id_string || s.id;
+        return id === action.payload.scanId
+          ? { ...s, doctorStatus: action.payload.status, doctorNotes: action.payload.notes || s.doctorNotes }
+          : s;
+      });
+      try {
+        localStorage.setItem('na_scans', JSON.stringify(updatedScans));
+      } catch (e) {}
+      return {
+        ...state,
+        scans: updatedScans,
+      };
+    }
+    case 'SET_ACTIVE_SCAN':
+      return { ...state, activeScanId: action.payload };
+    case 'UPDATE_SETTINGS':
+      return { ...state, settings: { ...state.settings, ...action.payload } };
+    case 'ADD_NOTIFICATION':
+      return {
+        ...state,
+        notifications: [
+          { id: Date.now(), time: 'Just now', ...action.payload },
+          ...state.notifications,
+        ],
+      };
+    case 'DISMISS_NOTIFICATION':
+      return {
+        ...state,
+        notifications: state.notifications.filter((n) => n.id !== action.payload),
+      };
+    default:
+      return state;
+  }
+}
+
 const AppContext = createContext();
 
-export const AppProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(appReducer, initialState);
+export function AppProvider({ children }) {
+  const [state, dispatch] = useReducer(appReducer, initialState);
 
-    useEffect(() => {
-        document.documentElement.className = state.theme;
-        if (state.theme === 'dark') document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
-    }, [state.theme]);
+  // On mount: validate existing token with backend /api/auth/me
+  useEffect(() => {
+    const token = localStorage.getItem('na_token');
+    if (!token) {
+      dispatch({ type: 'AUTH_LOADED' });
+      return;
+    }
 
-    return (
-        <AppContext.Provider value={{ state, dispatch }}>
-            {children}
-        </AppContext.Provider>
-    );
-};
+    authAPI
+      .me()
+      .then(({ data }) => {
+        const user = {
+          id: data.id,
+          email: data.email,
+          full_name: data.full_name,
+          role: data.role,
+        };
+        localStorage.setItem('na_user', JSON.stringify(user));
+        dispatch({ type: 'SET_AUTH', payload: { token, user } });
+      })
+      .catch(() => {
+        // Token invalid or expired — clear auth
+        localStorage.removeItem('na_token');
+        localStorage.removeItem('na_refresh');
+        localStorage.removeItem('na_user');
+        dispatch({ type: 'AUTH_LOADED' });
+      });
+  }, []);
 
-export const useApp = () => useContext(AppContext);
+  return (
+    <AppContext.Provider value={{ state, dispatch }}>
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+}

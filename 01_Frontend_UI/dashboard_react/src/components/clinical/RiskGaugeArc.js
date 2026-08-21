@@ -1,0 +1,178 @@
+import React from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Cell,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
+
+/**
+ * RiskGaugeArc — Calm, curved clinical risk arc meter in muted maroon and slate,
+ * paired with an animated Recharts horizontal bar chart for multi-class softmax probabilities.
+ * No neon glow, no alarming red — strictly hospital-grade aesthetics.
+ */
+export default function RiskGaugeArc({
+  score = 84, // 0 - 100
+  probabilities = { CN: 3.8, MCI: 8.8, AD: 87.4 },
+  prediction = 'AD',
+  confidence = 87.4,
+}) {
+  // SVG Arc calculation for semicircle (180 degrees)
+  const radius = 78;
+  const strokeWidth = 14;
+  const circumference = Math.PI * radius; // Half-circle circumference
+  const normalizedScore = Math.min(Math.max(score, 0), 100);
+  const strokeDashoffset = circumference - (normalizedScore / 100) * circumference;
+
+  const getScoreCategory = (s) => {
+    if (s >= 71) return { label: 'High Neurological Risk (AD Profile)', color: '#7A1F2B', bg: '#F8EAED' };
+    if (s >= 36) return { label: 'Moderate Impairment (MCI Profile)', color: '#B87326', bg: '#FAF3E8' };
+    return { label: 'Low Risk (Cognitively Normal)', color: '#4A7C59', bg: '#EDF5F0' };
+  };
+
+  const category = getScoreCategory(score);
+
+  // Softmax chart data for Recharts horizontal bar chart
+  const pCN = probabilities?.CN ?? 0;
+  const pMCI = probabilities?.MCI ?? 0;
+  const pAD = probabilities?.AD ?? 0;
+
+  const chartData = [
+    { label: 'CN', name: 'Cognitively Normal (CN)', val: pCN, color: '#4A7C59', bg: '#EDF5F0' },
+    { label: 'MCI', name: 'Mild Cognitive Impairment (MCI)', val: pMCI, color: '#B87326', bg: '#FAF3E8' },
+    { label: 'AD', name: "Alzheimer's Disease (AD)", val: pAD, color: '#7A1F2B', bg: '#F8EAED' },
+  ];
+
+  return (
+    <div className="clinical-card p-5 bg-white flex flex-col justify-between">
+      <div>
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#E8E2DA]">
+          <span className="text-xs font-bold uppercase tracking-wider text-[#7A756F]">
+            AI Risk Index & Confidence
+          </span>
+          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-[#ECC8CF] bg-[#F8EAED] text-[#7A1F2B]">
+            MedicalNet 3D
+          </span>
+        </div>
+
+        {/* Semicircle Gauge Visual */}
+        <div className="relative flex flex-col items-center justify-center pt-2">
+          <svg width="200" height="115" viewBox="0 0 200 115" className="overflow-visible">
+            {/* Background Track Arc */}
+            <path
+              d="M 22 105 A 78 78 0 0 1 178 105"
+              fill="none"
+              stroke="#F0E8E1"
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+            />
+            {/* Active Risk Score Arc */}
+            <path
+              d="M 22 105 A 78 78 0 0 1 178 105"
+              fill="none"
+              stroke={category.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out"
+            />
+          </svg>
+
+          {/* Centered Big Risk Score Value */}
+          <div className="absolute bottom-1 flex flex-col items-center text-center">
+            <span className="text-3xl sm:text-4xl font-serif font-bold text-[#22201F] tracking-tight">
+              {score}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#7A756F]">
+              Risk Score / 100
+            </span>
+          </div>
+        </div>
+
+        {/* Category Pill */}
+        <div className="mt-4 text-center">
+          <span
+            className="inline-block text-xs font-bold px-3 py-1 rounded-full border border-[#E8E2DA]"
+            style={{ backgroundColor: category.bg, color: category.color }}
+          >
+            {category.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Probabilities Distribution breakdown with animated Recharts BarChart */}
+      <div className="mt-5 pt-4 border-t border-[#F0EBE5] space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#7A756F]">
+            Softmax Multi-Class Probability
+          </span>
+          <span className="text-[10px] text-[#A39E98] font-mono">Sum: 100%</span>
+        </div>
+
+        <div className="h-28 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              layout="vertical"
+              margin={{ top: 4, right: 35, left: 10, bottom: 4 }}
+            >
+              <XAxis type="number" domain={[0, 100]} hide />
+              <YAxis
+                type="category"
+                dataKey="label"
+                tick={{ fontSize: 11, fill: '#22201F', fontWeight: 600 }}
+                axisLine={false}
+                tickLine={false}
+                width={30}
+              />
+              <RechartsTooltip
+                cursor={{ fill: 'rgba(250, 246, 243, 0.6)' }}
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const d = payload[0].payload;
+                    return (
+                      <div className="bg-white p-2.5 rounded-xl border border-[#E8E2DA] shadow-clinical-md text-xs">
+                        <span className="font-bold text-[#22201F] block">{d.name}</span>
+                        <span className="font-mono font-semibold" style={{ color: d.color }}>
+                          Confidence: <strong>{d.val}%</strong>
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Bar dataKey="val" radius={[0, 6, 6, 0]} animationDuration={900}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Legend row with exact numeric readouts */}
+        <div className="grid grid-cols-3 gap-1.5 pt-1">
+          {chartData.map((item, idx) => (
+            <div
+              key={idx}
+              className="p-1.5 rounded-lg border border-[#E8E2DA] text-center"
+              style={{ backgroundColor: item.bg }}
+            >
+              <span className="text-[10px] font-bold block" style={{ color: item.color }}>
+                {item.label}
+              </span>
+              <span className="font-mono text-xs font-bold text-[#22201F]">
+                {item.val}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

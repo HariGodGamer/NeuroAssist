@@ -3,406 +3,161 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════════════
-   NeuroAssist V3 — Premium Healthcare AI Design System
-   Green: #67E499 / #A0E8AF     Purple: #8F63F4 / #CAA8F5 / #EAE8FF
+   NEUROASSIST — Clinical AI Diagnostic Platform (Hospital-Grade Design)
+   Palette: Warm Cream (#FAF6F3) · Burgundy (#7A1F2B) · Slate (#5B7C99)
+   Charcoal Text (#22201F) · White Cards with Hairline Borders
 ═══════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-
-/* ── CSS Design Tokens ────────────────────────────────────────────── */
 :root {
-  /* Greens */
-  --green-50:  #f0fdf6;
-  --green-100: #dcfce9;
-  --green-200: #a0e8af;
-  --green-300: #67e499;
-  --green-400: #3dd678;
-  --green-500: #22c55e;
+  --bg-cream: #FAF6F3;
+  --bg-cream-soft: #F7F1EC;
+  --bg-cream-card: #FFFFFF;
+  --border-hairline: #E8E2DA;
+  --border-subtle: #EDE7E0;
+  
+  --maroon-primary: #7A1F2B;
+  --maroon-dark: #5E1620;
+  --maroon-light: #F8EAED;
+  --maroon-border: #ECC8CF;
 
-  /* Purples */
-  --purple-100: #eae8ff;
-  --purple-200: #caa8f5;
-  --purple-400: #9d60f6;
-  --purple-500: #8f63f4;
-  --purple-600: #7c3aed;
+  --slate-primary: #5B7C99;
+  --slate-light: #E8EFF5;
+  
+  --text-charcoal: #22201F;
+  --text-secondary: #7A756F;
+  --text-tertiary: #A39E98;
 
-  /* Surfaces */
-  --surface-base:    #0d0f1a;
-  --surface-raised:  #131625;
-  --surface-overlay: #1a1d30;
-  --surface-border:  rgba(103, 228, 153, 0.12);
-  --surface-border-p: rgba(143, 99, 244, 0.15);
+  --sage-text: #2E523A;
+  --sage-bg: #EDF5F0;
+  --sage-border: #CFE3D5;
 
-  /* Typography */
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #64748b;
-  --text-green:     #67e499;
-  --text-purple:    #caa8f5;
-
-  /* Shadows */
-  --shadow-glass:  0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-panel:  0 4px 24px rgba(0,0,0,0.6);
-  --shadow-card:   0 2px 12px rgba(0,0,0,0.4);
-  --glow-green:    0 0 30px rgba(103,228,153,0.2);
-  --glow-purple:   0 0 30px rgba(143,99,244,0.2);
+  --amber-text: #8A5A14;
+  --amber-bg: #FAF3E8;
+  --amber-border: #F0DEC2;
 }
 
 /* ── Base Reset ──────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-cream);
+  color: var(--text-charcoal);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--surface-base);
-  color: var(--text-primary);
+  padding: 0;
+  background-color: var(--bg-cream);
+  color: var(--text-charcoal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  /* Disable text selection globally */
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
 }
 
-/* Re-enable selection only where needed */
-input, textarea, [contenteditable] {
-  user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
+/* ── Editorial Headings ──────────────────────────────────────────── */
+h1, h2, h3, h4 {
+  font-family: 'Fraunces', 'Newsreader', Georgia, serif;
+  color: var(--text-charcoal);
+  letter-spacing: -0.015em;
 }
 
-/* ── Typography ──────────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Outfit', 'Inter', sans-serif;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--text-primary);
+/* ── Subtle Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-
-/* ── Scrollbar ───────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-track {
+  background: #FAF6F3;
+}
 ::-webkit-scrollbar-thumb {
-  background: rgba(103, 228, 153, 0.25);
-  border-radius: 3px;
+  background: #D8C9BC;
+  border-radius: 9999px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(103, 228, 153, 0.4); }
+::-webkit-scrollbar-thumb:hover {
+  background: #B8A89A;
+}
 
-/* ════════════════════════════════════════════════════════════════════
-   COMPONENT CLASSES
-═══════════════════════════════════════════════════════════════════ */
-
+/* ── Clinical Custom Classes ─────────────────────────────────────── */
 @layer components {
-
-  /* ── Glass Cards & Panels ──────────────────────────────────────── */
-  .glass {
-    @apply rounded-2xl border;
-    background: rgba(19, 22, 37, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-color: var(--surface-border);
-    box-shadow: var(--shadow-glass);
+  /* White card with hairline border & calm elevation */
+  .clinical-card {
+    @apply bg-white border border-[#E8E2DA] rounded-[14px] shadow-clinical transition-all duration-200;
+  }
+  .clinical-card-hover {
+    @apply clinical-card hover:shadow-clinical-hover hover:border-[#D5CDC3];
   }
 
-  .glass-purple {
-    @apply rounded-2xl border;
-    background: rgba(19, 22, 37, 0.7);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-color: var(--surface-border-p);
-    box-shadow: var(--shadow-glass);
+  /* Editorial Brand Header */
+  .brand-title {
+    font-family: 'Fraunces', Georgia, serif;
+    letter-spacing: 0.04em;
+  }
+  .brand-title .brand-bold {
+    color: #7A1F2B;
+    font-weight: 800;
+  }
+  .brand-title .brand-regular {
+    color: #22201F;
+    font-weight: 400;
   }
 
-  .glass-raised {
-    background: rgba(26, 29, 48, 0.85);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--surface-border);
-    border-radius: 16px;
-    box-shadow: var(--shadow-panel);
+  /* Primary Maroon Clinical Button */
+  .btn-maroon {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all duration-150;
+    background-color: #7A1F2B;
+  }
+  .btn-maroon:hover {
+    background-color: #661823;
+  }
+  .btn-maroon:active {
+    transform: translateY(1px);
   }
 
-  /* ── Radiology Workspace Panels ────────────────────────────────── */
-  .workspace-panel {
-    background: rgba(13, 15, 26, 0.95);
-    border: 1px solid var(--surface-border);
-    border-radius: 12px;
-    box-shadow: var(--shadow-panel);
-    overflow: hidden;
+  /* Secondary Neutral Button */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-[#22201F] bg-white border border-[#E8E2DA] transition-all duration-150;
+  }
+  .btn-outline:hover {
+    @apply bg-[#F7F1EC] border-[#D5CDC3];
+  }
+  .btn-outline:active {
+    transform: translateY(1px);
   }
 
-  .workspace-panel-header {
-    @apply flex items-center justify-between px-4 py-3 border-b;
-    background: rgba(19, 22, 37, 0.9);
-    border-color: var(--surface-border);
+  /* Clean Input Field */
+  .clinical-input {
+    @apply w-full px-3.5 py-2.5 text-sm bg-white border border-[#E8E2DA] rounded-xl text-[#22201F] placeholder-[#A39E98] outline-none transition-all duration-150;
+  }
+  .clinical-input:focus {
+    @apply border-[#7A1F2B] ring-2 ring-[#7A1F2B]/10;
   }
 
-  /* ── Buttons ────────────────────────────────────────────────────── */
-  .btn-primary {
-    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
-    @apply px-5 py-2.5 text-sm;
-    background: linear-gradient(135deg, var(--green-300), var(--green-400));
-    color: #0d0f1a;
-    box-shadow: 0 4px 15px rgba(103, 228, 153, 0.3);
-  }
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(103, 228, 153, 0.45);
-  }
-  .btn-primary:active { transform: translateY(0); }
-
-  .btn-secondary {
-    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
-    @apply px-5 py-2.5 text-sm;
-    background: rgba(103, 228, 153, 0.1);
-    color: var(--text-green);
-    border: 1px solid rgba(103, 228, 153, 0.25);
-  }
-  .btn-secondary:hover {
-    background: rgba(103, 228, 153, 0.18);
-    border-color: rgba(103, 228, 153, 0.4);
-    transform: translateY(-1px);
-  }
-
-  .btn-purple {
-    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
-    @apply px-5 py-2.5 text-sm;
-    background: linear-gradient(135deg, var(--purple-500), var(--purple-600));
-    color: white;
-    box-shadow: 0 4px 15px rgba(143, 99, 244, 0.3);
-  }
-  .btn-purple:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(143, 99, 244, 0.45);
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center gap-2 font-medium rounded-xl transition-all duration-200;
-    @apply px-4 py-2 text-sm;
-    color: var(--text-secondary);
-    background: transparent;
-  }
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-primary);
-  }
-
-  .btn-danger {
-    @apply inline-flex items-center gap-2 font-semibold rounded-xl transition-all duration-200;
-    @apply px-5 py-2.5 text-sm;
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-  }
-  .btn-danger:hover {
-    background: rgba(239, 68, 68, 0.25);
-    border-color: rgba(239, 68, 68, 0.5);
-  }
-
-  /* ── Input Fields ───────────────────────────────────────────────── */
-  .input-field {
-    @apply w-full rounded-xl px-4 py-3 text-sm transition-all duration-200 outline-none;
-    background: rgba(19, 22, 37, 0.8);
-    border: 1px solid var(--surface-border);
-    color: var(--text-primary);
-  }
-  .input-field::placeholder { color: var(--text-muted); }
-  .input-field:focus {
-    border-color: var(--green-300);
-    box-shadow: 0 0 0 3px rgba(103, 228, 153, 0.1);
-    background: rgba(26, 29, 48, 0.9);
-  }
-
-  .input-label {
-    @apply block text-xs font-semibold mb-1.5 uppercase tracking-wide;
-    color: var(--text-muted);
-  }
-
-  /* ── Status Badges ──────────────────────────────────────────────── */
+  /* Status Badges */
   .badge-cn {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
-    background: rgba(103, 228, 153, 0.15);
-    color: var(--green-300);
-    border: 1px solid rgba(103, 228, 153, 0.3);
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#EDF5F0] text-[#2E523A] border border-[#CFE3D5];
   }
   .badge-mci {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
-    background: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FAF3E8] text-[#8A5A14] border border-[#F0DEC2];
   }
   .badge-ad {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F8EAED] text-[#7A1F2B] border border-[#ECC8CF];
   }
-  .badge-pending {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
-    background: rgba(100, 116, 139, 0.15);
-    color: #94a3b8;
-    border: 1px solid rgba(100, 116, 139, 0.3);
+  .badge-neutral {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F4F7FA] text-[#5B7C99] border border-[#CFDEEB];
   }
 
-  /* ── Data cards ─────────────────────────────────────────────────── */
-  .metric-card {
-    @apply p-5 rounded-2xl transition-all duration-300;
-    background: rgba(19, 22, 37, 0.8);
-    border: 1px solid var(--surface-border);
-  }
-  .metric-card:hover {
-    border-color: rgba(103, 228, 153, 0.3);
-    box-shadow: var(--glow-green);
-    transform: translateY(-2px);
-  }
-
-  /* ── Skeleton Loaders ───────────────────────────────────────────── */
-  .skeleton {
-    @apply rounded-lg animate-pulse;
-    background: linear-gradient(90deg,
-      rgba(26,29,48,0.6) 25%,
-      rgba(103,228,153,0.06) 50%,
-      rgba(26,29,48,0.6) 75%
-    );
-    background-size: 400% 100%;
-    animation: shimmer 2s infinite;
-  }
-
-  /* ── Confidence bars ────────────────────────────────────────────── */
-  .confidence-bar-track {
-    @apply h-2 rounded-full overflow-hidden;
-    background: rgba(255,255,255,0.06);
-  }
-  .confidence-bar-fill {
-    @apply h-2 rounded-full transition-all duration-700 ease-out;
-  }
-
-  /* ── Section header ─────────────────────────────────────────────── */
-  .section-label {
-    @apply text-xs font-bold uppercase tracking-widest;
-    color: var(--text-muted);
-  }
-
-  /* ── Divider ────────────────────────────────────────────────────── */
-  .divider {
-    @apply w-full h-px;
-    background: var(--surface-border);
-  }
-
-  /* ── Navigation items ───────────────────────────────────────────── */
-  .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
-    color: var(--text-secondary);
-  }
-  .nav-item:hover {
-    background: rgba(103, 228, 153, 0.07);
-    color: var(--text-primary);
-  }
-  .nav-item.active {
-    background: rgba(103, 228, 153, 0.12);
-    color: var(--text-green);
-    border: 1px solid rgba(103, 228, 153, 0.2);
+  /* Micro Skeleton loader */
+  .clinical-skeleton {
+    background: linear-gradient(90deg, #F0E8E1 25%, #FAF6F3 50%, #F0E8E1 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite ease-in-out;
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   LANDING PAGE SPECIFICS
-═══════════════════════════════════════════════════════════════════ */
-
-.hero-bg {
-  background: radial-gradient(ellipse 80% 60% at 50% -10%,
-    rgba(143, 99, 244, 0.18) 0%,
-    rgba(103, 228, 153, 0.06) 50%,
-    transparent 70%),
-    radial-gradient(ellipse 50% 80% at 85% 50%,
-    rgba(143, 99, 244, 0.08) 0%,
-    transparent 60%),
-    var(--surface-base);
-}
-
-.neural-gradient {
-  background: linear-gradient(135deg, var(--green-300) 0%, var(--purple-500) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.glow-dot {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   WORKSPACE LAYOUT
-═══════════════════════════════════════════════════════════════════ */
-
-.workspace-layout {
-  display: grid;
-  grid-template-columns: 280px 1fr 320px;
-  grid-template-rows: 1fr;
-  height: 100vh;
-  overflow: hidden;
-  background: var(--surface-base);
-}
-
-.workspace-left  { overflow-y: auto; }
-.workspace-center { overflow: hidden; display: flex; flex-direction: column; }
-.workspace-right { overflow-y: auto; }
-
-/* MRI viewer controls */
-.mri-viewer {
-  position: relative;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: crosshair;
-}
-.mri-viewer canvas { display: block; }
-.mri-control-btn {
-  @apply rounded-lg p-2 transition-all duration-150;
-  background: rgba(0,0,0,0.6);
-  color: var(--text-secondary);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.mri-control-btn:hover {
-  background: rgba(103,228,153,0.12);
-  color: var(--text-green);
-  border-color: rgba(103,228,153,0.3);
-}
-
-/* Risk gauge colours */
-.risk-low    { color: var(--green-300); }
-.risk-medium { color: #fbbf24; }
-.risk-high   { color: #f87171; }
-
-/* ── Framer Motion page wrapper ─────────────────────────────────── */
-.page-motion { @apply w-full h-full; }
-
-/* ── Notifications toast ────────────────────────────────────────── */
-.toast {
-  @apply fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-medium shadow-xl;
-  backdrop-filter: blur(20px);
-  animation: slideUp 0.35s cubic-bezier(0.16,1,0.3,1);
-}
-.toast-success {
-  background: rgba(103, 228, 153, 0.15);
-  border: 1px solid rgba(103, 228, 153, 0.35);
-  color: var(--green-300);
-}
-.toast-error {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  color: #fca5a5;
-}
-.toast-info {
-  background: rgba(143, 99, 244, 0.15);
-  border: 1px solid rgba(143, 99, 244, 0.35);
-  color: var(--purple-200);
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

@@ -1,38 +1,85 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/AppContext';
-import { FaSpinner } from 'react-icons/fa';
+import { AppProvider, useApp } from './context/AppContext';
+import { LuBrain } from 'react-icons/lu';
 
-// Lazy load key premium pages
-const LandingPage = lazy(() => import('./pages/LandingPage'));
-const AuthPage = lazy(() => import('./pages/AuthPage'));
-const DoctorWorkspace = lazy(() => import('./pages/DoctorWorkspace'));
-const PatientJourney = lazy(() => import('./pages/PatientJourney'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+// Page components
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import ScanUploadPage from './pages/ScanUploadPage';
+import ScanDetailPage from './pages/ScanDetailPage';
+import PatientsDirectoryPage from './pages/PatientsDirectoryPage';
+import PatientProfilePage from './pages/PatientProfilePage';
+import SettingsPage from './pages/SettingsPage';
 
-const GlobalLoader = () => (
-  <div className="fixed inset-0 bg-[#0d0f1a] flex flex-col items-center justify-center gap-3 z-[9999]">
-    <FaSpinner className="animate-spin text-green-300 text-3xl" />
-    <span className="text-xs uppercase font-bold tracking-widest text-slate-500">Loading NeuroAssist Core...</span>
+// Calm clinical loader
+const ClinicalLoader = () => (
+  <div className="fixed inset-0 bg-[#FAF6F3] flex flex-col items-center justify-center gap-3 z-50">
+    <div className="w-10 h-10 rounded-xl bg-[#7A1F2B] text-white flex items-center justify-center shadow-clinical animate-subtle-pulse">
+      <LuBrain className="w-6 h-6" />
+    </div>
+    <span className="text-xs font-serif font-semibold tracking-wider text-[#7A756F]">
+      NEUROASSIST CLINICAL
+    </span>
   </div>
 );
+
+// Auth guard: redirects to /login if not authenticated
+function RequireAuth({ children }) {
+  const { state } = useApp();
+
+  if (state.auth.isLoading) {
+    return <ClinicalLoader />;
+  }
+
+  if (!state.auth.token || !state.auth.user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+// Redirect away from login if already authenticated
+function RedirectIfAuth({ children }) {
+  const { state } = useApp();
+
+  if (state.auth.isLoading) {
+    return <ClinicalLoader />;
+  }
+
+  if (state.auth.token && state.auth.user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Login — redirect to dashboard if already signed in */}
+      <Route path="/login" element={<RedirectIfAuth><LoginPage /></RedirectIfAuth>} />
+
+      {/* Protected Dashboard Routes */}
+      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
+      <Route path="/dashboard/scan" element={<RequireAuth><ScanUploadPage /></RequireAuth>} />
+      <Route path="/dashboard/scan/:scanId" element={<RequireAuth><ScanDetailPage /></RequireAuth>} />
+      <Route path="/dashboard/patients" element={<RequireAuth><PatientsDirectoryPage /></RequireAuth>} />
+      <Route path="/dashboard/patients/:patientId" element={<RequireAuth><PatientProfilePage /></RequireAuth>} />
+      <Route path="/dashboard/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+
+      {/* Default */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <AppProvider>
       <Router>
-        <Suspense fallback={<GlobalLoader />}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/doctor" element={<DoctorWorkspace />} />
-            <Route path="/patient" element={<PatientJourney />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            
-            {/* Catch-all redirects */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+        <AppRoutes />
       </Router>
     </AppProvider>
   );
