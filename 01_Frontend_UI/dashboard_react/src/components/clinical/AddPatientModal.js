@@ -8,7 +8,6 @@ import { FiX, FiUser, FiCheckCircle, FiLock, FiShield } from 'react-icons/fi';
  * AddPatientModal — Clinical modal form for registering a new patient into the longitudinal registry.
  * - Auto-generates patient code (MRN) as read-only / locked.
  * - Auto-assigns the logged-in Neurologist as read-only.
- * - Baseline status is removed from manual selection (defaults automatically).
  */
 export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectToProfile = true }) {
   const navigate = useNavigate();
@@ -17,7 +16,7 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
   const currentUser = state.auth?.user;
   const defaultDoctor = currentUser?.full_name 
     ? (currentUser.full_name.startsWith('Dr.') ? currentUser.full_name : `Dr. ${currentUser.full_name}`)
-    : 'Dr. Krishnam Gupta';
+    : 'Dr. Sarah Lin, MD';
 
   // Generate random 4-digit ID
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
@@ -75,29 +74,35 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
     const dobYear = new Date().getFullYear() - ageNum;
     const dob = `${dobYear}-06-15`;
 
-    const defaultCondition = 'CN';
+    const notesLower = formData.clinicalNotes.toLowerCase();
+    const derivedCond = notesLower.includes('alzheimer') || notesLower.includes('ad ') || notesLower.includes('severe')
+      ? 'AD'
+      : notesLower.includes('mci') || notesLower.includes('mild') || notesLower.includes('deficit')
+      ? 'MCI'
+      : 'CN';
+
     const conditionStages = {
       CN: 'Cognitively Normal',
       MCI: 'Mild Cognitive Impairment',
       AD: "Alzheimer's Disease",
     };
 
-    const initialRisk = 18;
-    const initialMmse = 29;
+    const initialRisk = derivedCond === 'AD' ? 82 : derivedCond === 'MCI' ? 52 : 18;
+    const initialMmse = derivedCond === 'AD' ? 17 : derivedCond === 'MCI' ? 24 : 29;
 
     const newPatientObj = {
       id: newPatientId,
       _id: newPatientId,
-      full_name: formData.fullName.trim(),
-      name: formData.fullName.trim(),
+      full_name: trimmedName,
+      name: trimmedName,
       patient_code: autoPatientCode,
       mrn: autoPatientCode,
       date_of_birth: dob,
       age: ageNum,
       gender: formData.gender,
-      condition: defaultCondition,
-      stage: conditionStages[defaultCondition],
-      diagnosis: defaultCondition,
+      condition: derivedCond,
+      stage: conditionStages[derivedCond],
+      diagnosis: derivedCond,
       assignedDoctor: defaultDoctor,
       doctorNotes: formData.clinicalNotes.trim(),
       riskScore: initialRisk,
@@ -110,7 +115,7 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
           date: new Date().toISOString().slice(0, 7),
           riskScore: initialRisk,
           mmse: initialMmse,
-          label: defaultCondition,
+          label: derivedCond,
         },
       ],
     };
@@ -159,27 +164,23 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
               <FiUser className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-serif font-bold text-[#22201F]">
-                Register New Patient
-              </h3>
-              <p className="text-xs text-[#7A756F]">
-                Add a new clinical record to the NeuroAssist registry.
-              </p>
+              <h3 className="text-base font-serif font-bold text-[#22201F]">Register New Patient</h3>
+              <p className="text-xs text-[#7A756F]">Add a patient record to your longitudinal clinical registry</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white border border-[#E8E2DA] text-[#7A756F] hover:text-[#22201F] flex items-center justify-center transition-colors shadow-sm"
+            className="w-8 h-8 rounded-xl bg-white border border-[#E8E2DA] flex items-center justify-center text-[#7A756F] hover:text-[#22201F] hover:bg-[#F0E8E1] transition-colors"
           >
             <FiX className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Body / Form */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 text-xs">
+        {/* Modal Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-[#F8EAED] border border-[#ECC8CF] text-[#7A1F2B] font-semibold text-xs">
-              {error}
+            <div className="p-3.5 rounded-xl bg-[#F8EAED] border border-[#ECC8CF] text-[#7A1F2B] text-xs flex items-center gap-2">
+              <span className="font-bold">Error:</span> {error}
             </div>
           )}
 
@@ -192,7 +193,7 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
               type="text"
               name="fullName"
               required
-              placeholder="e.g. Eleanor Vance, Harold Finch"
+              placeholder="e.g. Eleanor Vance"
               value={formData.fullName}
               onChange={handleChange}
               className="clinical-input w-full"
@@ -234,6 +235,8 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
               </select>
             </div>
           </div>
+
+
 
           {/* Auto-generated MRN & Assigned Neurologist (Read-only / Locked) */}
           <div className="grid grid-cols-2 gap-4">
@@ -278,29 +281,36 @@ export default function AddPatientModal({ isOpen, onClose, onSuccess, redirectTo
             <textarea
               name="clinicalNotes"
               rows={3}
+              placeholder="Enter patient medical background, family history, MMSE score observations..."
               value={formData.clinicalNotes}
               onChange={handleChange}
-              placeholder="Enter patient background, family history of dementia, initial cognitive complaints, or medications..."
-              className="clinical-input w-full resize-none leading-relaxed"
+              className="clinical-input w-full resize-none"
             />
           </div>
 
           {/* Submit Actions */}
-          <div className="pt-3 border-t border-[#E8E2DA] flex items-center justify-end gap-3">
+          <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#E8E2DA]">
             <button
               type="button"
               onClick={onClose}
-              className="btn-outline text-xs px-4 py-2"
+              className="btn-outline text-xs"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="btn-maroon text-xs px-5 py-2 shadow-clinical-sm flex items-center gap-1.5"
+              className="btn-maroon text-xs shadow-clinical-sm flex items-center gap-1.5"
             >
-              <FiCheckCircle className="w-4 h-4" />
-              <span>{loading ? 'Registering...' : 'Create Patient Record'}</span>
+              {loading ? (
+                <span>Registering...</span>
+              ) : (
+                <>
+                  <FiCheckCircle className="w-3.5 h-3.5" />
+                  <span>Create Patient Record</span>
+                </>
+              )}
             </button>
           </div>
         </form>

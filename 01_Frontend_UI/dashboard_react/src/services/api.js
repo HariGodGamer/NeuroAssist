@@ -80,6 +80,7 @@ export const scanAPI = {
   result:  id => api.get(`/api/scan/result/${id}`),
   detail:  id => api.get(`/api/scan/${id}`),
   review:  (id, data) => api.put(`/api/scan/${id}/review`, data),
+  delete:  id => api.delete(`/api/scan/${id}`),
   reportUrl: id => `${BASE_URL}/api/scan/${id}/report`,
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -7,6 +7,7 @@ import GradCamViewer from '../components/clinical/GradCamViewer';
 import StatusBadge from '../components/common/StatusBadge';
 import ClinicalReportModal from '../components/clinical/ClinicalReportModal';
 import { generateScanData } from '../utils/mockDataGenerator';
+import { scanAPI } from '../services/api';
 import { 
   FiCheck,
   FiFlag, 
@@ -16,13 +17,18 @@ import {
   FiShield, 
   FiCheckCircle,
   FiTrash2,
-  FiLock
+  FiLock,
+  FiAlertTriangle,
+  FiClock
 } from 'react-icons/fi';
 
 export default function ScanDetailPage() {
   const { scanId } = useParams();
   const navigate = useNavigate();
   const { state, dispatch } = useApp();
+
+  const currentUser = state.auth?.user;
+  const isPatient = currentUser?.role === 'patient';
 
   const scansList = Array.isArray(state.scans) ? state.scans : [];
   const patientsList = Array.isArray(state.patients) ? state.patients : [];
@@ -51,10 +57,9 @@ export default function ScanDetailPage() {
     brain_regions: rawScan?.brain_regions || {},
   };
 
-  const currentUser = state.auth?.user;
   const loggedInDoctor = currentUser?.full_name 
     ? (currentUser.full_name.startsWith('Dr.') ? currentUser.full_name : `Dr. ${currentUser.full_name}`)
-    : 'Dr. Krishnam Gupta';
+    : 'Dr. Sarah Lin, MD';
 
   const scanPId = scan.patientId || scan.patient_id;
   const scanPName = (scan.patientName || scan.patient || '').trim().toLowerCase();
@@ -70,8 +75,8 @@ export default function ScanDetailPage() {
     return false;
   }) || patientsList[0] || {
     id: scan.patientId || 'PT-0001',
-    name: scan.patientName || 'Patient Record',
-    full_name: scan.patientName || 'Patient Record',
+    name: scan.patientName || currentUser?.full_name || 'Patient Record',
+    full_name: scan.patientName || currentUser?.full_name || 'Patient Record',
     mrn: scan.patient_code || scan.mrn || 'NA-2026-0001',
     patient_code: scan.patient_code || scan.mrn || 'NA-2026-0001',
     age: scan.patientAge || 65,
@@ -79,7 +84,9 @@ export default function ScanDetailPage() {
     assignedDoctor: loggedInDoctor
   };
 
-  const pName = patient.full_name || patient.name || scan.patientName || 'Patient Record';
+  const pName = isPatient 
+    ? (currentUser?.full_name || currentUser?.name || scan.patientName || 'My Scan')
+    : (patient.full_name || patient.name || scan.patientName || 'Patient Record');
   const pMrn = patient.patient_code || patient.mrn || 'NA-2026-0042';
   const pInitials = pName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'PT';
 
@@ -112,44 +119,45 @@ export default function ScanDetailPage() {
   const [isSignedOff, setIsSignedOff] = useState(Boolean(initialSaved?.isSignedOff || scan.isSignedOff));
   const [signedOffTime, setSignedOffTime] = useState(initialSaved?.signedOffAt || scan.signedOffAt || '');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Sync state whenever scanId or localStorage changes
-  useEffect(() => {
-    const saved = getSavedDecision();
-    if (saved) {
-      setSelectedStatus(saved.status || 'accepted');
-      setDecisionNotes(saved.notes || '');
-      setIsSignedOff(Boolean(saved.isSignedOff));
-      setSignedOffTime(saved.signedOffAt || '');
-    } else if (rawScan?.isSignedOff || (rawScan?.doctorStatus && rawScan.doctorStatus !== 'pending')) {
-      setSelectedStatus(rawScan.doctorStatus);
-      setDecisionNotes(rawScan.doctorNotes || '');
-      setIsSignedOff(true);
-      setSignedOffTime(rawScan.signedOffAt || '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentScanId, scansList, rawScan]);
+  const confirmDeleteScan = async () => {
+    setIsDeleting(true);
+    try {
+      await scanAPI.delete(currentScanId).catch(() => {});
+    } catch (e) {}
+    dispatch({ type: 'DELETE_SCAN', payload: currentScanId });
+    setIsDeleting(false);
+    setShowDeleteModal(false);
+    navigate(isPatient ? '/dashboard/my-scans' : '/dashboard');
+  };
 
-  const handleFinalSignOff = () => {
-    if (isSignedOff) return;
-    const timestamp = new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setSignedOffTime(timestamp);
-    setIsSignedOff(true);
+  const handleSaveDecision = (statusToSave = selectedStatus) => {
+    const timeStr = new Date().toLocaleDateString('en-GB') + ' · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const doctorName = loggedInDoctor;
 
     const signOffPayload = {
       scanId: currentScanId,
-      status: selectedStatus,
+      status: statusToSave,
       notes: decisionNotes,
-      isSignedOff: true,
-      signedOffAt: timestamp,
-      signedOffBy: patient.assignedDoctor || loggedInDoctor || 'Dr. Krishnam'
+      signedOffAt: timeStr,
+      signedOffBy: doctorName
     };
 
+    setSelectedStatus(statusToSave);
+    setIsSignedOff(true);
+    setSignedOffTime(timeStr);
+
     try {
-      localStorage.setItem(storageKey, JSON.stringify(signOffPayload));
-    } catch (e) {
-      console.warn('Could not save signoff to localStorage:', e);
-    }
+      localStorage.setItem(storageKey, JSON.stringify({
+        status: statusToSave,
+        notes: decisionNotes,
+        isSignedOff: true,
+        signedOffAt: timeStr,
+        signedOffBy: doctorName
+      }));
+    } catch (e) {}
 
     dispatch({
       type: 'UPDATE_SCAN_DECISION',
@@ -166,7 +174,7 @@ export default function ScanDetailPage() {
     {
       name: 'Hippocampal Volume Index',
       val: hippo?.value || '2.64 cm³',
-      dev: hippo?.deviation || '-22% vs Norm',
+      dev: hippo?.deviation || '-22% Atrophy',
       badge: hippo?.severity || 'Significant Atrophy',
       severityPct: hippo?.severityPct ?? (scan.prediction === 'AD' ? 78 : scan.prediction === 'MCI' ? 45 : 15),
       color: hippo?.status === 'high' || scan.prediction === 'AD' ? '#7A1F2B' : hippo?.status === 'medium' || scan.prediction === 'MCI' ? '#B87326' : '#4A7C59',
@@ -195,41 +203,36 @@ export default function ScanDetailPage() {
     },
   ];
 
-  const handleDeleteScan = () => {
-    if (window.confirm(`Are you sure you want to delete scan record ${scan.scanId}?`)) {
-      dispatch({ type: 'DELETE_SCAN', payload: scan.scanId });
-      navigate('/dashboard');
-    }
-  };
-
   return (
     <DashboardLayout
-      title={`Diagnostic Examination: ${pName}`}
+      title={isPatient ? `MRI Scan Insights: ${pName}` : `Diagnostic Examination: ${pName}`}
       subtitle={`Volumetric Series ${scan.scanId} · Acquired ${scan.uploadDate}`}
       action={
         <div className="flex items-center gap-2">
           <Link
-            to="/dashboard"
+            to={isPatient ? "/dashboard/my-scans" : "/dashboard"}
             className="btn-outline text-xs"
           >
             <FiArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Queue</span>
+            <span>{isPatient ? 'Back to My Scans' : 'Back to Queue'}</span>
           </Link>
-          <button
-            type="button"
-            onClick={handleDeleteScan}
-            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#7A1F2B] bg-[#F8EAED] border border-[#ECC8CF] hover:bg-[#F0D5DA] transition-colors flex items-center gap-1.5"
-            title="Delete this scan record"
-          >
-            <FiTrash2 className="w-3.5 h-3.5" />
-            <span>Delete Scan</span>
-          </button>
+          {!isPatient && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-[#7A1F2B] bg-[#F8EAED] border border-[#ECC8CF] hover:bg-[#F0D5DA] transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Delete this scan record"
+            >
+              <FiTrash2 className="w-3.5 h-3.5" />
+              <span>Delete Scan</span>
+            </button>
+          )}
           <button
             onClick={() => setShowReportModal(true)}
-            className="btn-maroon text-xs shadow-clinical-sm"
+            className="btn-maroon text-xs shadow-clinical-sm cursor-pointer"
           >
             <FiPrinter className="w-3.5 h-3.5" />
-            <span>Generate Clinical PDF</span>
+            <span>{isPatient ? 'Export Scan Summary PDF' : 'Generate Clinical PDF'}</span>
           </button>
         </div>
       }
@@ -244,9 +247,13 @@ export default function ScanDetailPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <Link to={`/dashboard/patients/${patient.id || patient._id || 'P-001'}`} className="font-bold text-[#22201F] text-sm hover:underline">
-                  {pName}
-                </Link>
+                {isPatient ? (
+                  <span className="font-bold text-[#22201F] text-sm">{pName}</span>
+                ) : (
+                  <Link to={`/dashboard/patients/${patient.id || patient._id || 'P-001'}`} className="font-bold text-[#22201F] text-sm hover:underline">
+                    {pName}
+                  </Link>
+                )}
                 <span className="font-mono text-[11px] text-[#A39E98]">({pMrn})</span>
               </div>
               <span className="text-[#7A756F] text-[11px]">
@@ -267,13 +274,13 @@ export default function ScanDetailPage() {
           </div>
         </div>
 
-        {/* Core Layout: Diagnostic Indicators & Doctor Sign-off Panel */}
+        {/* Core Layout: Diagnostic Indicators & Doctor Sign-off Panel / Patient Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left 6 Cols: Grad-CAM Slice Workstation & Doctor Decision Panel */}
+          {/* Left 6 Cols: Grad-CAM Slice Workstation & Decision Panel */}
           <div className="lg:col-span-6 space-y-6">
 
-            {/* Grad-CAM Volumetric 3D Slice Workstation with patient variation */}
+            {/* Grad-CAM Volumetric 3D Slice Workstation */}
             <GradCamViewer
               scanId={scan.scanId}
               condition={scan.prediction}
@@ -284,8 +291,53 @@ export default function ScanDetailPage() {
               biomarkers={scan.biomarkers}
             />
 
-            {/* Doctor Decision Panel (Switch to clean Review Recorded upon confirmation) */}
-            {isSignedOff ? (
+            {/* If Patient: Show Patient Review Status Card. If Doctor: Show Doctor Sign-Off Panel */}
+            {isPatient ? (
+              <div className="clinical-card p-5 bg-white space-y-3.5 shadow-clinical border border-[#E8E2DA]">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-[#EDF5F0] text-[#4A7C59] flex items-center justify-center">
+                      <FiShield className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-serif font-bold text-[#22201F]">
+                        Physician Review Status
+                      </h4>
+                      <span className="text-[11px] text-[#7A756F]">
+                        Assigned Clinician: <strong>{patient.assignedDoctor || loggedInDoctor}</strong>
+                      </span>
+                    </div>
+                  </div>
+                  {isSignedOff ? (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-[#EDF5F0] text-[#4A7C59] border border-[#CFE3D5] flex items-center gap-1">
+                      <FiCheckCircle className="w-3.5 h-3.5" />
+                      <span>Reviewed</span>
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-[#FAF3E8] text-[#B87326] border border-[#F2DEBF] flex items-center gap-1">
+                      <FiClock className="w-3.5 h-3.5" />
+                      <span>Under Clinical Review</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] space-y-2">
+                  <span className="text-[11px] font-semibold text-[#22201F] block">
+                    {isSignedOff ? 'Physician Clinical Notes:' : 'Clinical Protocol Notice:'}
+                  </span>
+                  <p className="text-xs text-[#5A5550] leading-relaxed">
+                    {isSignedOff
+                      ? `"${decisionNotes || 'Volumetric MRI series examined and validated by attending physician.'}"`
+                      : 'Your 3D volumetric MRI scan has been processed by the 3D ResNet-10 AI engine. The multi-planar Grad-CAM attention maps and biomarker metrics above will be finalized by your physician during your diagnostic consultation.'}
+                  </p>
+                </div>
+
+                <div className="text-[11px] text-[#A39E98] flex items-center justify-between pt-1 font-mono">
+                  <span>Scan ID: {currentScanId}</span>
+                  <span>Acquired: {scan.uploadDate}</span>
+                </div>
+              </div>
+            ) : isSignedOff ? (
               <div className="clinical-card p-5 bg-white space-y-4 border border-[#CFE3D5] shadow-clinical animate-fade-in">
                 {/* Confirmed Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
@@ -363,11 +415,11 @@ export default function ScanDetailPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedStatus('accepted')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                    onClick={() => handleSaveDecision('accepted')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       selectedStatus === 'accepted'
-                        ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5] shadow-clinical-sm'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                        ? 'bg-[#EDF5F0] text-[#2E523A] border-[#4A7C59] shadow-clinical-xs'
+                        : 'border-[#E8E2DA] text-[#5A5550] hover:bg-[#FAF6F3]'
                     }`}
                   >
                     <FiCheck className="w-4 h-4 text-[#4A7C59]" />
@@ -376,98 +428,96 @@ export default function ScanDetailPage() {
 
                   <button
                     type="button"
-                    onClick={() => setSelectedStatus('flagged')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      selectedStatus === 'flagged'
-                        ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2] shadow-clinical-sm'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
-                    }`}
-                  >
-                    <FiFlag className="w-4 h-4 text-[#B87326]" />
-                    <span>Flag Case</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedStatus('overridden')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                    onClick={() => handleSaveDecision('overridden')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       selectedStatus === 'overridden'
-                        ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF] shadow-clinical-sm'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                        ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#7A1F2B] shadow-clinical-xs'
+                        : 'border-[#E8E2DA] text-[#5A5550] hover:bg-[#FAF6F3]'
                     }`}
                   >
                     <FiEdit3 className="w-4 h-4 text-[#7A1F2B]" />
                     <span>Override</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDecision('flagged')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      selectedStatus === 'flagged'
+                        ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#B87326] shadow-clinical-xs'
+                        : 'border-[#E8E2DA] text-[#5A5550] hover:bg-[#FAF6F3]'
+                    }`}
+                  >
+                    <FiFlag className="w-4 h-4 text-[#B87326]" />
+                    <span>Flag Case</span>
+                  </button>
                 </div>
 
-                {/* Doctor Clinical Notes */}
+                {/* Notes Textarea */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A756F]">
-                    Clinical Diagnosis Notes & Directives
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#7A756F]">
+                    Physician Clinical Notes & Recommendations
                   </label>
                   <textarea
                     rows={3}
                     value={decisionNotes}
                     onChange={(e) => setDecisionNotes(e.target.value)}
-                    placeholder="Enter radiologist impression, treatment notes, or override rationale..."
-                    className="w-full p-3 rounded-xl border border-[#E8E2DA] bg-[#FAF6F3] text-xs text-[#22201F] focus:outline-none focus:border-[#7A1F2B] transition-colors resize-none placeholder:text-[#A39E98]"
+                    placeholder="Enter diagnostic impressions, biomarker interpretations, or follow-up orders..."
+                    className="w-full p-3 rounded-xl border border-[#D8C9BC] bg-[#FAF6F3] text-xs text-[#22201F] placeholder-[#A39E98] focus:outline-none focus:border-[#7A1F2B] resize-none"
                   />
                 </div>
 
-                {/* Save Decision CTA */}
-                <div className="space-y-3 pt-3 border-t border-[#E8E2DA]">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] text-[#7A756F]">Pending Confirmation:</span>
-                    <span className="font-mono text-xs font-bold text-[#7A1F2B] uppercase bg-[#F8EAED] px-2.5 py-0.5 rounded-full border border-[#ECC8CF] flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#7A1F2B] animate-pulse" />
-                      {selectedStatus}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleFinalSignOff}
-                    className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#7A1F2B] via-[#8C2332] to-[#7A1F2B] hover:from-[#661823] hover:to-[#7A1F2B] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 border border-[#ECC8CF]/30 active:scale-[0.99] cursor-pointer group"
-                  >
-                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <FiCheckCircle className="w-3.5 h-3.5 text-[#4ADE80]" />
-                    </div>
-                    <span className="tracking-wider uppercase text-[11px] font-bold">
-                      Confirm & Lock Sign-Off
-                    </span>
-                  </button>
-                </div>
+                {/* Confirm Sign-Off Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSaveDecision(selectedStatus)}
+                  className="w-full py-2.5 rounded-xl bg-[#7A1F2B] hover:bg-[#661823] text-white text-xs font-bold transition-all shadow-clinical flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <FiCheckCircle className="w-4 h-4" />
+                  <span>Sign & Finalize Examination</span>
+                </button>
               </div>
             )}
 
           </div>
 
-          {/* Right 6 Cols: Risk Gauge & Volumetric Biomarkers */}
+          {/* Right 6 Cols: Clinical Risk Gauge & Volumetric Biomarkers */}
           <div className="lg:col-span-6 space-y-6">
-            
-            {/* Risk Gauge Arc */}
-            <RiskGaugeArc
-              score={scan.riskScore}
-              probabilities={scan.probabilities}
-              prediction={scan.prediction}
-              confidence={scan.confidence}
-            />
 
-            {/* Volumetric Biomarkers Telemetry Cards with Severity Indicators & Horizontal Bars */}
-            <div className="clinical-card p-5 bg-white space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-[#E8E2DA]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A756F]">
-                  Volumetric Biomarker Indicators
-                </h4>
-                <span className="text-[10px] font-mono text-[#A39E98]">SimpleITK v2.3</span>
+            {/* Risk Gauge Card */}
+            <div className="clinical-card p-6 bg-white space-y-4 shadow-clinical">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
+                <h3 className="text-base font-serif font-bold text-[#22201F]">
+                  Cohort Risk & Probability Gauge
+                </h3>
+                <span className="text-xs font-mono text-[#7A756F]">Model: 3D ResNet-10</span>
+              </div>
+
+              <RiskGaugeArc
+                riskScore={scan.riskScore}
+                prediction={scan.prediction}
+                confidence={scan.confidence}
+                probabilities={scan.probabilities}
+              />
+            </div>
+
+            {/* Volumetric Biomarkers Breakdown */}
+            <div className="clinical-card p-6 bg-white space-y-4 shadow-clinical">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
+                <h3 className="text-base font-serif font-bold text-[#22201F]">
+                  Volumetric Biomarker Regions
+                </h3>
+                <span className="text-xs text-[#7A756F]">SimpleITK Morphometry</span>
               </div>
 
               <div className="space-y-3">
-                {biomarkerCards.map((bio, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] text-xs space-y-2">
-                    {/* Header: Dot + Name + Value */}
-                    <div className="flex items-center justify-between">
+                {biomarkerCards.map((bio) => (
+                  <div
+                    key={bio.name}
+                    className="p-3.5 rounded-2xl border border-[#E8E2DA] bg-[#FAF7F4] space-y-2"
+                  >
+                    {/* Header: Name + Metric */}
+                    <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
                         <span
                           className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
@@ -522,6 +572,51 @@ export default function ScanDetailPage() {
           patient={patient}
           onClose={() => setShowReportModal(false)}
         />
+      )}
+
+      {/* Delete Scan Confirmation Modal */}
+      {showDeleteModal && !isPatient && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-clinical-lg border border-[#E8E2DA] space-y-4 animate-scale-up">
+            <div className="w-12 h-12 rounded-full bg-[#F8EAED] text-[#7A1F2B] flex items-center justify-center mx-auto border border-[#ECC8CF]">
+              <FiAlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-serif font-bold text-[#22201F]">
+                Delete Scan Record?
+              </h3>
+              <p className="text-xs text-[#7A756F] leading-relaxed">
+                Are you sure you want to permanently delete scan record <strong className="text-[#22201F] font-mono">{currentScanId}</strong> for patient <strong className="text-[#22201F]">{pName}</strong>?
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl border border-[#D8C9BC] hover:bg-[#FAF6F3] text-xs font-semibold text-[#5A5550] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteScan}
+                disabled={isDeleting}
+                className="flex-1 py-2.5 rounded-xl bg-[#7A1F2B] hover:bg-[#661823] text-xs font-semibold text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isDeleting ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <FiTrash2 className="w-3.5 h-3.5" />
+                    <span>Delete Scan</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </DashboardLayout>
   );

@@ -238,6 +238,28 @@ async def get_scan_detail(scan_id: str, current_user: dict = Depends(get_current
     return await _get_scan_detail_by_id(scan_id, current_user)
 
 
+@router.delete("/{scan_id}", status_code=204)
+async def delete_scan(
+    scan_id: str,
+    current_user: dict = Depends(require_role(["doctor", "admin"]))
+):
+    query = {"scan_id_string": scan_id}
+    if current_user["role"] == "doctor":
+        query["doctor_id"] = current_user["id"]
+    scan = await scans_col.find_one(query)
+    if not scan:
+        scan = await scans_col.find_one({"scan_id_string": scan_id})
+    if scan:
+        await scans_col.delete_one({"_id": scan["_id"]})
+        await review_queue_col.delete_one({"scan_id_string": scan_id})
+        await log_audit(
+            user_id=current_user["id"],
+            email=current_user["email"],
+            action="SCAN_DELETE",
+            details=f"Deleted scan {scan_id}"
+        )
+    return
+
 @router.put("/{scan_id}/review")
 async def review_scan(
     scan_id: str,

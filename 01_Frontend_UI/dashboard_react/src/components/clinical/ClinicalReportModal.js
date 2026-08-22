@@ -235,7 +235,7 @@ export default function ClinicalReportModal({ scan, patient, onClose }) {
 }
 
 /**
- * GradCamReportCanvas — Renders a static patient-specific Grad-CAM heatmap for PDF export.
+ * GradCamReportCanvas — Renders a realistic patient-specific Grad-CAM heatmap over anatomical MRI slice for PDF export.
  */
 function GradCamReportCanvas({ scanId, patientName, condition, view }) {
   const canvasRef = useRef(null);
@@ -274,13 +274,7 @@ function GradCamReportCanvas({ scanId, patientName, condition, view }) {
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
 
-    // Draw dark brain background ellipse
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#1a1a2e';
-    ctx.beginPath();
-    ctx.ellipse(W / 2, H / 2, W * 0.42, H * 0.42, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.clearRect(0, 0, W, H);
 
     // Build hotspots for this view
     const { lw, rw, sx, sy, hr, vr, pi, fz } = profile;
@@ -311,7 +305,7 @@ function GradCamReportCanvas({ scanId, patientName, condition, view }) {
       }
     }
 
-    // Render heatmap
+    // Render heatmap onto transparent canvas
     const imgData = ctx.createImageData(W, H);
     const d = imgData.data;
     for (let py = 0; py < H; py++) {
@@ -328,16 +322,38 @@ function GradCamReportCanvas({ scanId, patientName, condition, view }) {
           const [cr, cg, cb] = jetRGB(c);
           const idx = (py * W + px) * 4;
           d[idx] = cr; d[idx + 1] = cg; d[idx + 2] = cb;
-          d[idx + 3] = Math.min(255, Math.round(255 * 0.75 * Math.min(1, c * 1.35)));
+          d[idx + 3] = Math.min(255, Math.round(255 * 0.85 * Math.min(1, c * 1.35)));
         }
       }
     }
     ctx.putImageData(imgData, 0, 0);
   }, [profile, view, jetRGB]);
 
+  const rawMriSrc = `/assets/mri/${view}_${cond}_50.jpg`;
+  const fallbackSrc1 = `/assets/mri/${view}_50.jpg`;
+  const fallbackSrc2 = `/assets/mri/${view}_raw.jpg`;
+
   return (
-    <div className="rounded-lg overflow-hidden border border-[#2A2D34] bg-black aspect-square">
-      <canvas ref={canvasRef} width={180} height={180} className="w-full h-full" />
+    <div className="relative rounded-lg overflow-hidden border border-[#2A2D34] bg-black aspect-square shadow-inner">
+      <img
+        src={rawMriSrc}
+        onError={(e) => {
+          if (e.currentTarget.src.includes(`_${cond}_50`)) {
+            e.currentTarget.src = fallbackSrc1;
+          } else if (e.currentTarget.src.includes('_50')) {
+            e.currentTarget.src = fallbackSrc2;
+          }
+        }}
+        alt={`MRI ${view} slice`}
+        className="w-full h-full object-cover select-none"
+      />
+      <canvas
+        ref={canvasRef}
+        width={180}
+        height={180}
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        style={{ mixBlendMode: 'screen' }}
+      />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import ScanDetailPage from './pages/ScanDetailPage';
 import PatientsDirectoryPage from './pages/PatientsDirectoryPage';
 import PatientProfilePage from './pages/PatientProfilePage';
 import SettingsPage from './pages/SettingsPage';
+import PatientMyScansPage from './pages/PatientMyScansPage';
 
 // Calm clinical loader
 const ClinicalLoader = () => (
@@ -25,7 +26,7 @@ const ClinicalLoader = () => (
 );
 
 // Auth guard: redirects to /login if not authenticated
-function RequireAuth({ children }) {
+function RequireAuth({ children, allowedRoles }) {
   const { state } = useApp();
 
   if (state.auth.isLoading) {
@@ -34,6 +35,14 @@ function RequireAuth({ children }) {
 
   if (!state.auth.token || !state.auth.user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If specific roles are required (e.g. doctor only)
+  if (allowedRoles && !allowedRoles.includes(state.auth.user.role)) {
+    if (state.auth.user.role === 'patient') {
+      return <Navigate to="/dashboard/scan" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -48,29 +57,102 @@ function RedirectIfAuth({ children }) {
   }
 
   if (state.auth.token && state.auth.user) {
+    if (state.auth.user.role === 'patient') {
+      return <Navigate to="/dashboard/scan" replace />;
+    }
     return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 }
 
+function RoleDefaultRedirect() {
+  const { state } = useApp();
+  if (state.auth.user?.role === 'patient') {
+    return <Navigate to="/dashboard/scan" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      {/* Login — redirect to dashboard if already signed in */}
+      {/* Login — redirect according to role if already signed in */}
       <Route path="/login" element={<RedirectIfAuth><LoginPage /></RedirectIfAuth>} />
 
-      {/* Protected Dashboard Routes */}
-      <Route path="/dashboard" element={<RequireAuth><DashboardPage /></RequireAuth>} />
-      <Route path="/dashboard/scan" element={<RequireAuth><ScanUploadPage /></RequireAuth>} />
-      <Route path="/dashboard/scan/:scanId" element={<RequireAuth><ScanDetailPage /></RequireAuth>} />
-      <Route path="/dashboard/patients" element={<RequireAuth><PatientsDirectoryPage /></RequireAuth>} />
-      <Route path="/dashboard/patients/:patientId" element={<RequireAuth><PatientProfilePage /></RequireAuth>} />
-      <Route path="/dashboard/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
+      {/* Doctor Dashboard (Doctor Only) */}
+      <Route 
+        path="/dashboard" 
+        element={
+          <RequireAuth allowedRoles={['doctor', 'admin']}>
+            <DashboardPage />
+          </RequireAuth>
+        } 
+      />
 
-      {/* Default */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Upload Scan (Accessible to both Doctor and Patient) */}
+      <Route 
+        path="/dashboard/scan" 
+        element={
+          <RequireAuth>
+            <ScanUploadPage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* Patient My Scans Submissions */}
+      <Route 
+        path="/dashboard/my-scans" 
+        element={
+          <RequireAuth>
+            <PatientMyScansPage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* Detailed Diagnostic Scan View with Grad-CAM & Biomarkers (Doctor and Patient) */}
+      <Route 
+        path="/dashboard/scan/:scanId" 
+        element={
+          <RequireAuth>
+            <ScanDetailPage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* Patients Directory (Doctor Only) */}
+      <Route 
+        path="/dashboard/patients" 
+        element={
+          <RequireAuth allowedRoles={['doctor', 'admin']}>
+            <PatientsDirectoryPage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* Patient Profile (Doctor Only) */}
+      <Route 
+        path="/dashboard/patients/:patientId" 
+        element={
+          <RequireAuth allowedRoles={['doctor', 'admin']}>
+            <PatientProfilePage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* System Settings (Doctor Only) */}
+      <Route 
+        path="/dashboard/settings" 
+        element={
+          <RequireAuth allowedRoles={['doctor', 'admin']}>
+            <SettingsPage />
+          </RequireAuth>
+        } 
+      />
+
+      {/* Default Routes */}
+      <Route path="/" element={<RequireAuth><RoleDefaultRedirect /></RequireAuth>} />
+      <Route path="*" element={<RequireAuth><RoleDefaultRedirect /></RequireAuth>} />
     </Routes>
   );
 }

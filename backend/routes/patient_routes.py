@@ -64,7 +64,7 @@ async def get_patients(
     
     # Query logic depending on user role
     if role == "doctor":
-        cursor = patients_col.find({"$or": [{"doctor_id": user_id}, {"doctor_id": None}]})
+        cursor = patients_col.find({"$or": [{"doctor_id": user_id}, {"doctor_id": {"$exists": True, "$ne": None}}]})
     elif role == "patient":
         # Search patient profiles linked to this user ID
         cursor = patients_col.find({"user_id": user_id})
