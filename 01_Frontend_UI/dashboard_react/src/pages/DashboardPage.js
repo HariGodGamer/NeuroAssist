@@ -4,10 +4,7 @@ import { useApp } from '../context/AppContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import MetricCard from '../components/common/MetricCard';
 import StatusBadge from '../components/common/StatusBadge';
-import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-} from 'recharts';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip } from 'recharts';
 import { FiUploadCloud, FiAlertTriangle, FiCheckCircle, FiActivity, FiArrowRight, FiClock, FiUsers } from 'react-icons/fi';
 import { LuBrain } from 'react-icons/lu';
 import { scanAPI, patientAPI } from '../services/api';
@@ -44,29 +41,10 @@ export default function DashboardPage() {
     fetchData();
   }, [dispatch]);
 
-  const rawPatients = state.patients;
-  const patients = Array.isArray(rawPatients) ? rawPatients : (rawPatients?.patients || rawPatients?.items || []);
-  const patientIds = new Set(patients.map(p => p.id || p._id));
-  const patientNames = new Set(patients.map(p => (p.full_name || p.name || '').toLowerCase()));
+  const patients = Array.isArray(state.patients) ? state.patients : [];
+  const scans = Array.isArray(state.scans) ? state.scans : [];
 
-  const rawScans = state.scans;
-  const allScans = Array.isArray(rawScans) ? rawScans : (rawScans?.items || rawScans?.scans || []);
-  const seenPatientScans = new Set();
-  const seenScanIds = new Set();
-  const scans = [];
-  for (const s of allScans) {
-    const sId = s.scanId || s.scan_id_string || s.id;
-    const pId = s.patientId || s.patient_id;
-    const pName = (s.patientName || s.patient || '').toLowerCase();
-    const isValidPatient = (pId && patientIds.has(pId)) || (pName && patientNames.has(pName));
-    const pKey = pName || pId;
-    if (sId && isValidPatient && !seenScanIds.has(sId) && !seenPatientScans.has(pKey)) {
-      seenScanIds.add(sId);
-      seenPatientScans.add(pKey);
-      scans.push(s);
-    }
-  }
-
+  // Computed metrics
   const pendingReviews = scans.filter((s) => (s.doctorStatus || s.status) === 'pending' || s.status === 'uploaded').length;
   const highRiskFlags = scans.filter((s) => s.prediction === 'AD' || (s.risk_score || s.riskScore || 0) >= 75).length;
 
@@ -82,16 +60,10 @@ export default function DashboardPage() {
     { name: "Alzheimer's Disease (AD)", count: adCount || 0, color: '#7A1F2B', bg: '#F8EAED' },
   ];
 
-  const performanceData = [
-    { metric: 'Accuracy', Binary: 87.0, MultiClass: 72.4 },
-    { metric: 'AUC Score', Binary: 92.3, MultiClass: 82.3 },
-    { metric: 'F1 Score', Binary: 85.7, MultiClass: 71.6 },
-  ];
-
   return (
     <DashboardLayout
       title="Clinical Overview"
-      subtitle="Neurological diagnostic triage, volumetric MRI screening, and model performance metrics."
+      subtitle="Neurological diagnostic triage and volumetric MRI screening workstation."
       action={
         state.auth?.user?.role === 'doctor' && (
           <Link to="/dashboard/scan" className="btn-maroon text-xs shadow-clinical-sm">
@@ -115,8 +87,8 @@ export default function DashboardPage() {
 
         {!loading && (
           <>
-            {/* Top 5 Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Top Metrics Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
                 title="Enrolled Patients"
                 value={String(patients.length)}
@@ -144,139 +116,91 @@ export default function DashboardPage() {
                 icon={FiAlertTriangle}
                 badgeType="maroon"
               />
-              <MetricCard
-                title="MedicalNet AUC"
-                value="0.9231"
-                subtitle="Pre-trained 3D CNN"
-                icon={LuBrain}
-                badgeText="87.0% Acc"
-                badgeType="sage"
-              />
             </div>
 
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-
-              {/* Cognitive Donut */}
-              <div className="lg:col-span-5 clinical-card p-6 flex flex-col justify-between">
+            {/* Cohort Cognitive Distribution Card */}
+            <div className="clinical-card p-6 bg-white">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#E8E2DA]">
                 <div>
-                  <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#E8E2DA]">
-                    <h3 className="text-base font-serif font-bold text-[#22201F]">Cohort Cognitive Distribution</h3>
-                    <span className="text-xs font-medium text-[#7A756F]">{totalClassified} Classified</span>
-                  </div>
+                  <h3 className="text-base font-serif font-bold text-[#22201F]">Cohort Cognitive Distribution</h3>
+                  <p className="text-xs text-[#7A756F] mt-0.5">Summary of patient cognitive classifications across analyzed scans.</p>
                 </div>
+                <span className="text-xs font-medium text-[#7A756F] bg-[#FAF6F3] px-3 py-1 rounded-full border border-[#E8E2DA]">
+                  {totalClassified} Total Classified Scans
+                </span>
+              </div>
 
-                {totalClassified > 0 ? (
-                  <>
-                    <div className="h-48 w-full my-2 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={cognitiveData} cx="50%" cy="50%" innerRadius={54} outerRadius={78} paddingAngle={3} dataKey="count">
-                            {cognitiveData.map((entry, i) => (
-                              <Cell key={i} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const d = payload[0].payload;
-                                return (
-                                  <div className="bg-white p-2.5 rounded-xl border border-[#E8E2DA] shadow-clinical-md text-xs">
-                                    <span className="font-bold text-[#22201F] block">{d.name}</span>
-                                    <span className="text-[#7A756F]">Count: <strong>{d.count}</strong></span>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
+              {totalClassified > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                  {/* Left: Donut Chart */}
+                  <div className="md:col-span-5 flex items-center justify-center">
+                    <div className="w-[208px] h-[208px] relative flex items-center justify-center">
+                      <PieChart width={208} height={208}>
+                        <Pie data={cognitiveData} cx={104} cy={104} innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="count">
+                          {cognitiveData.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} stroke="#FFFFFF" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const d = payload[0].payload;
+                              return (
+                                <div className="bg-white p-2.5 rounded-xl border border-[#E8E2DA] shadow-clinical-md text-xs">
+                                  <span className="font-bold text-[#22201F] block">{d.name}</span>
+                                  <span className="text-[#7A756F]">Count: <strong>{d.count}</strong></span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                      </PieChart>
                       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-xl font-serif font-bold text-[#22201F]">{totalClassified}</span>
+                        <span className="text-2xl font-serif font-bold text-[#22201F]">{totalClassified}</span>
                         <span className="text-[10px] uppercase font-semibold tracking-wider text-[#A39E98]">Scans</span>
                       </div>
                     </div>
-                    <div className="space-y-2 pt-3 border-t border-[#F0EBE5]">
-                      {cognitiveData.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-[#22201F] font-medium">{item.name.split('(')[0]}</span>
+                  </div>
+
+                  {/* Right: Cognitive Distribution Breakdown Cards */}
+                  <div className="md:col-span-7 space-y-3">
+                    {cognitiveData.map((item, idx) => {
+                      const pct = totalClassified > 0 ? Math.round((item.count / totalClassified) * 100) : 0;
+                      return (
+                        <div key={idx} className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                              <span className="text-[#22201F] font-bold">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-[#22201F]">{item.count} scans</span>
+                              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full" style={{ color: item.color, backgroundColor: item.bg }}>
+                                {pct}%
+                              </span>
+                            </div>
                           </div>
-                          <span className="font-mono font-semibold text-[#7A756F]">
-                            {item.count} ({totalClassified > 0 ? Math.round((item.count / totalClassified) * 100) : 0}%)
-                          </span>
+                          <div className="w-full h-2 rounded-full bg-[#E8E2DA] overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{ width: `${pct}%`, backgroundColor: item.color }}
+                            />
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center py-8">
-                    <p className="text-xs text-[#A39E98]">No classified scans yet. Upload a scan to get started.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Model Performance */}
-              <div className="lg:col-span-7 clinical-card p-6 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#E8E2DA]">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A1F2B] bg-[#F8EAED] px-2 py-0.5 rounded-full border border-[#ECC8CF]">
-                        Clinical Audit
-                      </span>
-                      <h3 className="text-base font-serif font-bold text-[#22201F] mt-1">AI Diagnostic Performance</h3>
-                    </div>
-                    <span className="text-xs font-semibold text-[#4A7C59] bg-[#EDF5F0] px-2.5 py-1 rounded-full border border-[#CFE3D5]">
-                      +37% vs Scratch
-                    </span>
+                      );
+                    })}
                   </div>
                 </div>
-
-                <div className="h-48 w-full my-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={performanceData} barGap={6}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0EBE5" />
-                      <XAxis dataKey="metric" tick={{ fontSize: 11, fill: '#7A756F' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#7A756F' }} axisLine={false} tickLine={false} />
-                      <RechartsTooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-white p-2.5 rounded-xl border border-[#E8E2DA] shadow-clinical-md text-xs">
-                                <span className="font-bold text-[#22201F] block mb-1">{label}</span>
-                                <span className="text-[#7A1F2B] block">Binary: {payload[0].value}%</span>
-                                <span className="text-[#5B7C99] block">Multi-Class: {payload[1].value}%</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar dataKey="Binary" fill="#7A1F2B" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="MultiClass" fill="#5B7C99" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center py-10">
+                  <p className="text-xs text-[#A39E98]">No classified scans yet. Upload a scan to view cohort distribution.</p>
                 </div>
-
-                <div className="pt-3 border-t border-[#F0EBE5] flex items-center justify-between text-xs text-[#7A756F]">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-sm bg-[#7A1F2B]" />
-                      <span>Binary: <strong>87.0%</strong></span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-3 h-3 rounded-sm bg-[#5B7C99]" />
-                      <span>Multi-Class: <strong>72.4%</strong></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Clinical Review Queue */}
-            <div className="clinical-card p-6">
+            <div className="clinical-card p-6 bg-white">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-[#E8E2DA]">
                 <div>
                   <h3 className="text-base font-serif font-bold text-[#22201F]">Recent Scans</h3>
@@ -318,26 +242,18 @@ export default function DashboardPage() {
                             </td>
                             <td className="py-3 px-3 font-serif font-bold text-sm">
                               <span className={risk >= 70 ? 'text-[#7A1F2B]' : risk >= 40 ? 'text-[#B87326]' : 'text-[#4A7C59]'}>
-                                {risk > 0 ? risk : '—'}
+                                {risk > 0 ? `${risk}/100` : '—'}
                               </span>
                             </td>
                             <td className="py-3 px-3">
-                              {status === 'accepted' || status === 'reviewed' ? (
-                                <span className="inline-flex items-center gap-1 text-[#4A7C59] font-medium text-[11px]">
-                                  <FiCheckCircle className="w-3.5 h-3.5" /> Approved
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[#7A1F2B] font-medium text-[11px] bg-[#F8EAED] px-2 py-0.5 rounded-full border border-[#ECC8CF]">
-                                  <FiClock className="w-3 h-3" /> Pending
-                                </span>
-                              )}
+                              <StatusBadge status={status} size="sm" />
                             </td>
                             <td className="py-3 px-3 text-right">
                               <Link
                                 to={`/dashboard/scan/${scanId}`}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E8E2DA] hover:bg-[#F8EAED] hover:text-[#7A1F2B] transition-colors"
+                                className="btn-outline text-xs inline-flex items-center gap-1"
                               >
-                                <span>Examine</span>
+                                <span>Inspect</span>
                                 <FiArrowRight className="w-3 h-3" />
                               </Link>
                             </td>
@@ -348,21 +264,19 @@ export default function DashboardPage() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 text-center">
-                  <LuBrain className="w-8 h-8 text-[#D8C9BC] mx-auto mb-3" />
-                  <p className="text-sm font-medium text-[#7A756F]">No scans yet</p>
-                  <p className="text-xs text-[#A39E98] mt-1">Upload your first MRI scan to begin AI-assisted diagnostics.</p>
-                  {state.auth?.user?.role === 'doctor' && (
-                    <Link to="/dashboard/scan" className="btn-maroon text-xs mt-4 inline-flex">
-                      <FiUploadCloud className="w-4 h-4" />
-                      <span>Upload First Scan</span>
-                    </Link>
-                  )}
+                <div className="text-center py-10">
+                  <FiCheckCircle className="w-8 h-8 text-[#4A7C59] mx-auto mb-2 opacity-50" />
+                  <p className="text-xs text-[#7A756F]">No MRI scans recorded in the database.</p>
+                  <Link to="/dashboard/scan" className="btn-maroon text-xs inline-flex items-center gap-1.5 mt-3">
+                    <FiUploadCloud className="w-3.5 h-3.5" />
+                    <span>Upload First Volumetric Scan</span>
+                  </Link>
                 </div>
               )}
             </div>
           </>
         )}
+
       </div>
     </DashboardLayout>
   );

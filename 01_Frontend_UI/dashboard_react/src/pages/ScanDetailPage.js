@@ -48,6 +48,7 @@ export default function ScanDetailPage() {
     probabilities: rawScan?.probabilities || seeded.probabilities,
     biomarkers: rawScan?.biomarkers && Object.keys(rawScan.biomarkers).length > 0 ? rawScan.biomarkers : seeded.biomarkers,
     gradCamRegions: rawScan?.gradCamRegions || seeded.gradCamRegions,
+    brain_regions: rawScan?.brain_regions || {},
   };
 
   const currentUser = state.auth?.user;
@@ -82,7 +83,6 @@ export default function ScanDetailPage() {
   const pMrn = patient.patient_code || patient.mrn || 'NA-2026-0042';
   const pInitials = pName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'PT';
 
-  // Consistent target scan ID from URL or list
   const currentScanId = scanId || rawScan?.scanId || rawScan?.scan_id_string || rawScan?.id || 'SCN-DEFAULT';
   const storageKey = `na_signoff_${currentScanId}`;
 
@@ -145,7 +145,6 @@ export default function ScanDetailPage() {
       signedOffBy: patient.assignedDoctor || loggedInDoctor || 'Dr. Krishnam'
     };
 
-    // Save permanently in localStorage under direct key
     try {
       localStorage.setItem(storageKey, JSON.stringify(signOffPayload));
     } catch (e) {
@@ -274,12 +273,15 @@ export default function ScanDetailPage() {
           {/* Left 6 Cols: Grad-CAM Slice Workstation & Doctor Decision Panel */}
           <div className="lg:col-span-6 space-y-6">
 
-            {/* Grad-CAM Volumetric 3D Slice Workstation */}
+            {/* Grad-CAM Volumetric 3D Slice Workstation with patient variation */}
             <GradCamViewer
               scanId={scan.scanId}
               condition={scan.prediction}
               confidence={scan.confidence}
               patientName={pName}
+              gradCamRegions={scan.gradCamRegions}
+              brainRegions={scan.brain_regions}
+              biomarkers={scan.biomarkers}
             />
 
             {/* Doctor Decision Panel (Switch to clean Review Recorded upon confirmation) */}
@@ -362,7 +364,7 @@ export default function ScanDetailPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedStatus('accepted')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedStatus === 'accepted'
                         ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5] shadow-clinical-sm'
                         : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
@@ -375,7 +377,7 @@ export default function ScanDetailPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedStatus('flagged')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedStatus === 'flagged'
                         ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2] shadow-clinical-sm'
                         : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
@@ -388,7 +390,7 @@ export default function ScanDetailPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedStatus('overridden')}
-                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                       selectedStatus === 'overridden'
                         ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF] shadow-clinical-sm'
                         : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
@@ -413,7 +415,7 @@ export default function ScanDetailPage() {
                   />
                 </div>
 
-                {/* Save Decision CTA - Highlighted & Prominent */}
+                {/* Save Decision CTA */}
                 <div className="space-y-3 pt-3 border-t border-[#E8E2DA]">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-[11px] text-[#7A756F]">Pending Confirmation:</span>

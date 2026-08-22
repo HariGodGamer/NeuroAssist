@@ -10,27 +10,32 @@ export default function ClinicalSidebar() {
 
   const rawPatients = state.patients;
   const patients = Array.isArray(rawPatients) ? rawPatients : (rawPatients?.patients || rawPatients?.items || []);
-  const patientIds = new Set(patients.map(p => p.id || p._id));
-  const patientNames = new Set(patients.map(p => (p.full_name || p.name || '').toLowerCase()));
+  const patientById = {};
+  const patientByName = {};
+  patients.forEach(p => {
+    if (p.id || p._id) patientById[p.id || p._id] = p;
+    const nm = (p.full_name || p.name || '').toLowerCase();
+    if (nm) patientByName[nm] = p;
+  });
 
   const rawScans = Array.isArray(state.scans) ? state.scans : (state.scans?.items || []);
   const uniqueScans = [];
   const seenIds = new Set();
-  const seenPatients = new Set();
   for (const s of rawScans) {
     const id = s.scanId || s.scan_id_string || s.id;
     const pId = s.patientId || s.patient_id;
     const pName = (s.patientName || s.patient || '').toLowerCase();
-    const isValidPatient = (pId && patientIds.has(pId)) || (pName && patientNames.has(pName));
-    const pKey = pName || pId;
-    if (id && !seenIds.has(id) && isValidPatient && !seenPatients.has(pKey)) {
+    const hasPatient = (pId && patientById[pId]) || (pName && patientByName[pName]);
+    if (id && !seenIds.has(id) && hasPatient) {
       seenIds.add(id);
-      seenPatients.add(pKey);
-      uniqueScans.push(s);
+      // Attach resolved patient name
+      const resolvedPatient = (pId && patientById[pId]) || (pName && patientByName[pName]);
+      uniqueScans.push({ ...s, _resolvedName: resolvedPatient?.full_name || resolvedPatient?.name || s.patientName || s.patient || 'Patient' });
     }
   }
   const scans = uniqueScans;
   const pendingCount = scans.filter((s) => (s.doctorStatus || s.status) === 'pending').length;
+
 
   const navLinks = [
     { to: '/dashboard', label: 'Clinical Overview', icon: FiGrid },
@@ -97,7 +102,7 @@ export default function ClinicalSidebar() {
             <div className="space-y-1">
               {scans.slice(0, 3).map((scan) => {
                 const scanId = scan.scanId || scan.scan_id_string || scan.id;
-                const name = scan.patientName || scan.patient_name || 'Patient';
+                const name = scan._resolvedName || scan.patientName || scan.patient_name || 'Patient';
                 const pred = scan.prediction || '—';
                 return (
                   <NavLink

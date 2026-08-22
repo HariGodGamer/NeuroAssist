@@ -55,17 +55,15 @@ function getInitialScans() {
         const cleaned = parsed.filter(
           (s) => !DEMO_NAMES.includes((s.patientName || s.patient || '').trim().toLowerCase())
         );
-        // Deduplicate duplicate scans per patient
-        const seenPatients = new Map();
+        // Deduplicate by scan ID only — allow multiple scans per patient
+        const seenIds = new Map();
         cleaned.forEach((s) => {
-          const pKey = (s.patientName || s.patient || s.patientId || s.patient_id || '').trim().toLowerCase();
-          if (pKey && !seenPatients.has(pKey)) {
-            seenPatients.set(pKey, s);
-          } else if (!pKey) {
-            seenPatients.set(s.scanId || s.id, s);
+          const scanKey = s.scanId || s.scan_id_string || s.id;
+          if (scanKey && !seenIds.has(scanKey)) {
+            seenIds.set(scanKey, s);
           }
         });
-        const result = Array.from(seenPatients.values());
+        const result = Array.from(seenIds.values());
         localStorage.setItem('na_scans', JSON.stringify(result));
         return result;
       }
@@ -251,17 +249,12 @@ function appReducer(state, action) {
       const targetPatientId = newScan.patientId || newScan.patient_id;
       const targetPatientName = (newScan.patientName || newScan.patient || '').toLowerCase();
       
-      // Deduplicate scans: keep single latest scan per patient and deduplicate by scan ID
+      // Deduplicate by scan ID only — allow multiple scans per patient
       const updatedScans = [
         newScan,
         ...currentScans.filter((s) => {
           const sId = s.scanId || s.scan_id_string || s.id;
-          const sPId = s.patientId || s.patient_id;
-          const sPName = (s.patientName || s.patient || '').toLowerCase();
-          if (sId === scanId) return false;
-          if (targetPatientId && sPId === targetPatientId) return false;
-          if (targetPatientName && sPName === targetPatientName) return false;
-          return true;
+          return sId !== scanId;
         }),
       ];
       const updatedPatients = (state.patients || []).map((pat) => {

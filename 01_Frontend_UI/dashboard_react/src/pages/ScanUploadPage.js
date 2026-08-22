@@ -58,7 +58,7 @@ export default function ScanUploadPage() {
     setPipelineStep(1);
 
     let currentStep = 1;
-    // Simulate stepping through the 7-stage preprocessing pipeline with smooth timing
+    // Step through the 7-stage preprocessing pipeline smoothly without blocking UI
     const stepInterval = setInterval(() => {
       currentStep += 1;
       if (currentStep <= 7) {
@@ -67,11 +67,11 @@ export default function ScanUploadPage() {
         clearInterval(stepInterval);
         setIsProcessing(false);
 
-        // Generate new scan record with VARIED AI predictions from seeded mock data
+        // Derive unique seed based on file signature, patient ID, and timestamp
+        const fileSignature = selectedFile ? `${selectedFile.name}_${selectedFile.size}` : `${Date.now()}`;
         const newScanId = `SCN-${Math.floor(100000 + Math.random() * 900000)}`;
 
-        // Use mockDataGenerator for varied, scan-specific predictions
-        const aiResult = generateScanData(newScanId);
+        const aiResult = generateScanData(`${newScanId}_${fileSignature}_${targetPatient.id || targetPatient._id}`);
 
         const newScan = {
           scanId: newScanId,
@@ -86,7 +86,7 @@ export default function ScanUploadPage() {
           mrn: targetPatient.patient_code || targetPatient.mrn,
           uploadDate: new Date().toLocaleString(),
           date: new Date().toISOString().split('T')[0],
-          fileFormat: 'T1_MPRAGE_iso1mm.nii.gz',
+          fileFormat: selectedFile?.name || 'T1_MPRAGE_iso1mm.nii.gz',
           sliceResolution: '128 x 128 x 128 (1.0mm isotropic)',
           prediction: aiResult.prediction,
           confidence: aiResult.confidence,
@@ -105,7 +105,7 @@ export default function ScanUploadPage() {
         dispatch({ type: 'ADD_SCAN', payload: newScan });
         navigate(`/dashboard/scan/${newScanId}`);
       }
-    }, 450);
+    }, 400);
   };
 
   return (
@@ -271,7 +271,7 @@ export default function ScanUploadPage() {
                 className={`w-full py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-clinical flex items-center justify-center gap-2 ${
                   !selectedFile || isProcessing
                     ? 'bg-[#E8DDD4] text-[#A39E98] cursor-not-allowed'
-                    : 'bg-[#7A1F2B] hover:bg-[#661823] text-white active:translate-y-0.5'
+                    : 'bg-[#7A1F2B] hover:bg-[#661823] text-white active:translate-y-0.5 cursor-pointer'
                 }`}
               >
                 {isProcessing ? (
