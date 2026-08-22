@@ -82,28 +82,48 @@ export default function ScanDetailPage() {
   const pMrn = patient.patient_code || patient.mrn || 'NA-2026-0042';
   const pInitials = pName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'PT';
 
-  const [decisionNotes, setDecisionNotes] = useState(scan.doctorNotes || '');
-  const [selectedStatus, setSelectedStatus] = useState(scan.doctorStatus || 'accepted');
-  const [isSignedOff, setIsSignedOff] = useState(Boolean(scan.isSignedOff));
-  const [signedOffTime, setSignedOffTime] = useState(scan.signedOffAt || (scan.isSignedOff ? new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''));
+  const scanTargetId = scan.scanId || scan.scan_id_string || scan.id || scanId;
+  const storageKey = `na_signoff_${scanTargetId}`;
+  const localSaved = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || 'null');
+    } catch {
+      return null;
+    }
+  })();
+
+  const [decisionNotes, setDecisionNotes] = useState(localSaved?.notes || scan.doctorNotes || '');
+  const [selectedStatus, setSelectedStatus] = useState(localSaved?.status || scan.doctorStatus || 'accepted');
+  const [isSignedOff, setIsSignedOff] = useState(Boolean(localSaved?.isSignedOff || scan.isSignedOff));
+  const [signedOffTime, setSignedOffTime] = useState(localSaved?.signedOffAt || scan.signedOffAt || (scan.isSignedOff ? new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''));
   const [showReportModal, setShowReportModal] = useState(false);
 
   const handleFinalSignOff = () => {
     if (isSignedOff) return;
     const timestamp = new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setSignedOffTime(timestamp);
+    setIsSignedOff(true);
+
+    const signOffPayload = {
+      scanId: scanTargetId,
+      status: selectedStatus,
+      notes: decisionNotes,
+      isSignedOff: true,
+      signedOffAt: timestamp,
+      signedOffBy: patient.assignedDoctor || 'Dr. Krishnam'
+    };
+
+    // Save to permanent localStorage keyed for this scan
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(signOffPayload));
+    } catch (e) {
+      console.warn('Could not save to localStorage:', e);
+    }
+
     dispatch({
       type: 'UPDATE_SCAN_DECISION',
-      payload: {
-        scanId: scan.scanId,
-        status: selectedStatus,
-        notes: decisionNotes,
-        isSignedOff: true,
-        signedOffAt: timestamp,
-        signedOffBy: patient.assignedDoctor || 'Dr. Krishnam'
-      }
+      payload: signOffPayload
     });
-    setIsSignedOff(true);
   };
 
   // Biomarkers with region severity indicators and 0-100% horizontal bars

@@ -282,7 +282,14 @@ function appReducer(state, action) {
       const updatedScans = state.scans.map((s) => {
         const id = s.scanId || s.scan_id_string || s.id;
         return id === action.payload.scanId
-          ? { ...s, doctorStatus: action.payload.status, doctorNotes: action.payload.notes || s.doctorNotes }
+          ? { 
+              ...s, 
+              doctorStatus: action.payload.status, 
+              doctorNotes: action.payload.notes || s.doctorNotes,
+              isSignedOff: action.payload.isSignedOff !== undefined ? action.payload.isSignedOff : true,
+              signedOffAt: action.payload.signedOffAt,
+              signedOffBy: action.payload.signedOffBy
+            }
           : s;
       });
       try {
