@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { LuBrain } from 'react-icons/lu';
-import { FiLayers, FiCrosshair, FiEye, FiRotateCcw } from 'react-icons/fi';
+import { FiLayers, FiCrosshair, FiEye } from 'react-icons/fi';
 
 /**
  * GradCamViewer — Hospital PACS Radiologist 3D MRI & Grad-CAM Heatmap Viewer
- * Fully interactive movable crosshair with real-time coordinate tracking & 3D slice depth.
+ * Dynamic crosshairs synchronized with the slice position slider.
  */
 export default function GradCamViewer({
   scanId = 'SCN-849201',
@@ -17,11 +17,6 @@ export default function GradCamViewer({
   const [zoomScale, setZoomScale] = useState(100); // 80 to 140
   const [showCrosshair, setShowCrosshair] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
-  
-  // Interactive Crosshair Position (X, Y in percentage 0-100)
-  const [crosshairPos, setCrosshairPos] = useState({ x: 50, y: 50 });
-  const [isDragging, setIsDragging] = useState(false);
-  const imageContainerRef = useRef(null);
 
   // Map 0-100 slider to nearest 5% real slice file
   const roundedSlice = Math.min(100, Math.max(0, Math.round(sliceIndex / 5) * 5));
@@ -30,28 +25,6 @@ export default function GradCamViewer({
   const realMriSrc = showHeatmap 
     ? `/assets/mri/${activeSliceView}_${roundedSlice}.jpg`
     : `/assets/mri/${activeSliceView}_raw.jpg`;
-
-  // Handle interactive mouse drag/click to move crosshair anywhere on MRI
-  const handlePointerMove = (e) => {
-    if (!imageContainerRef.current) return;
-    const rect = imageContainerRef.current.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
-    if (clientX === undefined || clientY === undefined) return;
-
-    const posX = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
-    const posY = Math.max(5, Math.min(95, ((clientY - rect.top) / rect.height) * 100));
-    setCrosshairPos({ x: Math.round(posX), y: Math.round(posY) });
-  };
-
-  const handlePointerDown = (e) => {
-    setIsDragging(true);
-    handlePointerMove(e);
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
 
   // Anatomical landmark descriptor
   const getLandmarkText = () => {
@@ -110,21 +83,12 @@ export default function GradCamViewer({
         </div>
       </div>
 
-      {/* Real DICOM Clinical MRI Screen - Interactive Drag/Click Viewport */}
-      <div 
-        ref={imageContainerRef}
-        onMouseDown={handlePointerDown}
-        onMouseMove={(e) => isDragging && handlePointerMove(e)}
-        onMouseUp={handlePointerUp}
-        onTouchStart={handlePointerDown}
-        onTouchMove={(e) => isDragging && handlePointerMove(e)}
-        onTouchEnd={handlePointerUp}
-        className="relative rounded-2xl border border-[#2A2D34] overflow-hidden bg-[#000000] shadow-2xl flex items-center justify-center aspect-square max-h-[380px] w-full cursor-crosshair group"
-      >
+      {/* Real DICOM Clinical MRI Screen */}
+      <div className="relative rounded-2xl border border-[#2A2D34] overflow-hidden bg-[#000000] shadow-2xl flex items-center justify-center aspect-square max-h-[380px] w-full">
         
         {/* Top-Left Live Coordinate HUD */}
         <div className="absolute top-3 left-3 z-20 bg-black/80 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg text-[9px] font-mono text-[#4ADE80] font-bold pointer-events-none shadow-md">
-          TARGET: X:{crosshairPos.x}% · Y:{crosshairPos.y}% · Z:{sliceIndex}%
+          COORD: X:{sliceIndex}% · Y:{sliceIndex}% · Z:{sliceIndex}%
         </div>
 
         {/* Top-Right Slice Position Badge */}
@@ -143,76 +107,71 @@ export default function GradCamViewer({
             }}
           />
 
-          {/* Movable Laser Crosshair & Targeting Reticle */}
+          {/* Dynamic Crosshair Synchronized with Slice Slider */}
           {showCrosshair && (
             <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.85 }}>
-              {/* Dynamic Horizontal Laser Line */}
+              {/* Horizontal scan line that moves with slider */}
               <line
                 x1="0"
-                y1={`${crosshairPos.y}%`}
+                y1={`${sliceIndex}%`}
                 x2="100%"
-                y2={`${crosshairPos.y}%`}
+                y2={`${sliceIndex}%`}
                 stroke="#4ade80"
                 strokeWidth="0.9"
                 strokeDasharray="4 5"
               />
-              {/* Dynamic Vertical Laser Line */}
+              {/* Vertical scan line that moves with slider */}
               <line
-                x1={`${crosshairPos.x}%`}
+                x1={`${sliceIndex}%`}
                 y1="0"
-                x2={`${crosshairPos.x}%`}
+                x2={`${sliceIndex}%`}
                 y2="100%"
                 stroke="#4ade80"
                 strokeWidth="0.9"
                 strokeDasharray="4 5"
               />
-              {/* Central Target Circle Dot */}
+              {/* Crosshair centre circle */}
               <circle
-                cx={`${crosshairPos.x}%`}
-                cy={`${crosshairPos.y}%`}
+                cx={`${sliceIndex}%`}
+                cy={`${sliceIndex}%`}
                 r="6"
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <circle
-                cx={`${crosshairPos.x}%`}
-                cy={`${crosshairPos.y}%`}
+                cx={`${sliceIndex}%`}
+                cy={`${sliceIndex}%`}
                 r="2"
                 fill="#4ade80"
               />
-              {/* Precision Target Brackets that follow coordinate */}
+              {/* Target brackets following the coordinate */}
               <polyline
-                points={`${crosshairPos.x - 3.5}%,${crosshairPos.y - 1.5}% ${crosshairPos.x - 3.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x - 1.5}%,${crosshairPos.y - 3.5}%`}
+                points={`${sliceIndex - 3.5}%,${sliceIndex - 1.5}% ${sliceIndex - 3.5}%,${sliceIndex - 3.5}% ${sliceIndex - 1.5}%,${sliceIndex - 3.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points={`${crosshairPos.x + 1.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y - 1.5}%`}
+                points={`${sliceIndex + 1.5}%,${sliceIndex - 3.5}% ${sliceIndex + 3.5}%,${sliceIndex - 3.5}% ${sliceIndex + 3.5}%,${sliceIndex - 1.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points={`${crosshairPos.x - 3.5}%,${crosshairPos.y + 1.5}% ${crosshairPos.x - 3.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x - 1.5}%,${crosshairPos.y + 3.5}%`}
+                points={`${sliceIndex - 3.5}%,${sliceIndex + 1.5}% ${sliceIndex - 3.5}%,${sliceIndex + 3.5}% ${sliceIndex - 1.5}%,${sliceIndex + 3.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points={`${crosshairPos.x + 1.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y + 1.5}%`}
+                points={`${sliceIndex + 1.5}%,${sliceIndex + 3.5}% ${sliceIndex + 3.5}%,${sliceIndex + 3.5}% ${sliceIndex + 3.5}%,${sliceIndex + 1.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
             </svg>
           )}
-        </div>
-
-        {/* Click/Drag Hint Overlay when hovering */}
-        <div className="absolute bottom-3 left-3 z-20 bg-black/75 backdrop-blur-xs border border-white/10 px-2 py-0.5 rounded text-[8px] font-mono text-white/70 pointer-events-none">
-          CLICK / DRAG TO MOVE CROSSHAIR
         </div>
 
         {/* Bottom-Right Colormap Legend */}
@@ -233,7 +192,7 @@ export default function GradCamViewer({
           <div className="flex items-center justify-between text-[11px] font-mono">
             <span className="text-[#7A756F] flex items-center gap-1.5 font-bold">
               <FiLayers className="w-3.5 h-3.5 text-[#7A1F2B]" />
-              <span>SLICE DEPTH (Z-AXIS 0-100):</span>
+              <span>SLICE POSITION (0-100):</span>
             </span>
             <span className="font-bold text-[#7A1F2B] bg-[#F8EAED] px-2 py-0.5 rounded border border-[#ECC8CF]">
               {sliceIndex} / 100
@@ -251,22 +210,12 @@ export default function GradCamViewer({
 
         {/* Landmark & Interactive Toggle Tools */}
         <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E8E2DA]">
-          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[190px]">
+          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[200px]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#7A1F2B] shrink-0" />
             <span className="truncate">{getLandmarkText()}</span>
           </span>
           
-          <div className="flex items-center gap-1.5">
-            {/* Center Reticle Reset */}
-            <button
-              type="button"
-              onClick={() => setCrosshairPos({ x: 50, y: 50 })}
-              title="Reset Crosshair to Center"
-              className="p-1.5 rounded-md text-[10px] font-semibold border bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3] transition-all"
-            >
-              <FiRotateCcw className="w-3 h-3" />
-            </button>
-
+          <div className="flex items-center gap-2">
             {/* Toggle Heatmap Overlay */}
             <button
               type="button"
@@ -302,7 +251,7 @@ export default function GradCamViewer({
               max="140"
               value={zoomScale}
               onChange={(e) => setZoomScale(Number(e.target.value))}
-              className="w-14 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer ml-0.5"
+              className="w-16 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer ml-1"
               title={`Zoom: ${zoomScale}%`}
             />
           </div>
