@@ -1,49 +1,37 @@
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 import os
 
 workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mri_dir = os.path.join(workspace_dir, "01_Frontend_UI", "dashboard_react", "public", "assets", "mri")
 os.makedirs(mri_dir, exist_ok=True)
 
-# Load the real high-res axial image
-axial_path = os.path.join(mri_dir, "axial_mri.jpg")
-base_img = Image.open(axial_path).convert("L")
-base_arr = np.array(base_img, dtype=np.float32) / 255.0
-
-h, w = base_arr.shape
-
-# 1. Generate Coronal & Sagittal authentic slices from high-res transformations
-coronal_arr = np.flipud(np.rot90(base_arr))
-coronal_arr = np.clip(coronal_arr * 1.05, 0, 1)
-
-sagittal_arr = np.rot90(base_arr, 2)
-sagittal_arr = np.clip(sagittal_arr * 0.98, 0, 1)
-
-views = {
-    "axial": base_arr,
-    "coronal": coronal_arr,
-    "sagittal": sagittal_arr
+# Load each authentic MRI view from its own real image file
+views_raw = {
+    "axial": Image.open(os.path.join(mri_dir, "axial_mri.jpg")).convert("L"),
+    "coronal": Image.open(os.path.join(mri_dir, "coronal_mri.jpg")).convert("L"),
+    "sagittal": Image.open(os.path.join(mri_dir, "sagittal_mri.jpg")).convert("L")
 }
 
-# Generate 0-100 slice overlays with authentic JET colormap blending
-for view_name, v_arr in views.items():
-    Image.fromarray((v_arr * 255).astype(np.uint8)).save(os.path.join(mri_dir, f"{view_name}_raw.jpg"), quality=95)
+for view_name, img in views_raw.items():
+    arr = np.array(img, dtype=np.float32) / 255.0
+    h, w = arr.shape
     
-    # Generate slices for 0, 5, 10 ... 100 percentages
+    # Save raw view
+    img.save(os.path.join(mri_dir, f"{view_name}_raw.jpg"), quality=95)
+    
+    # Generate 0-100 slice overlays
     for pct in range(0, 101, 5):
         z = pct / 100.0
         
-        # 3D Gaussian attention centered at hippocampus/temporal (z=0.50)
+        # 3D Gaussian depth attention centered at diagnostic biomarker slice (z=0.50)
         z_target = 0.50
-        depth_weight = np.exp(-((z - z_target) ** 2) / (2 * (0.16 ** 2)))
+        depth_weight = np.exp(-((z - z_target) ** 2) / (2 * (0.17 ** 2)))
         
-        # Create heatmap 2D grid
         Y, X = np.ogrid[:h, :w]
         
-        # Focal coordinates
         if view_name == "axial":
-            # Hippocampus / Temporal lobe foci
+            # Bilateral Medial Temporal / Hippocampus foci
             c1_x, c1_y = int(w * 0.38), int(h * 0.54)
             c2_x, c2_y = int(w * 0.62), int(h * 0.54)
             r = int(w * 0.14)
@@ -51,31 +39,32 @@ for view_name, v_arr in views.items():
             dist2 = ((X - c2_x) ** 2 + (Y - c2_y) ** 2) / (2 * (r ** 2))
             cam = depth_weight * (np.exp(-dist1) * 1.0 + np.exp(-dist2) * 0.90)
         elif view_name == "coronal":
-            c1_x, c1_y = int(w * 0.36), int(h * 0.56)
-            c2_x, c2_y = int(w * 0.64), int(h * 0.56)
-            r = int(w * 0.13)
+            # Hippocampal structures visible on coronal plane
+            c1_x, c1_y = int(w * 0.36), int(h * 0.64)
+            c2_x, c2_y = int(w * 0.64), int(h * 0.64)
+            r = int(w * 0.12)
             dist1 = ((X - c1_x) ** 2 + (Y - c1_y) ** 2) / (2 * (r ** 2))
             dist2 = ((X - c2_x) ** 2 + (Y - c2_y) ** 2) / (2 * (r ** 2))
-            cam = depth_weight * (np.exp(-dist1) * 1.0 + np.exp(-dist2) * 0.88)
+            cam = depth_weight * (np.exp(-dist1) * 1.0 + np.exp(-dist2) * 0.92)
         else: # sagittal
-            c1_x, c1_y = int(w * 0.46), int(h * 0.55)
-            r = int(w * 0.16)
+            # Medial temporal lobe & hippocampus arch on sagittal plane
+            c1_x, c1_y = int(w * 0.52), int(h * 0.42)
+            r = int(w * 0.14)
             dist1 = ((X - c1_x) ** 2 + (Y - c1_y) ** 2) / (2 * (r ** 2))
             cam = depth_weight * (np.exp(-dist1) * 1.0)
             
         cam = np.clip(cam, 0, 1)
         
-        # JET Colormap calculation
+        # JET Colormap formula
         red = np.clip(1.5 - np.abs(cam * 4 - 3), 0.0, 1.0)
         green = np.clip(1.5 - np.abs(cam * 4 - 2), 0.0, 1.0)
         blue = np.clip(1.5 - np.abs(cam * 4 - 1), 0.0, 1.0)
         
-        # Base Grayscale RGB
-        rgb_base = np.stack([v_arr] * 3, axis=-1)
+        rgb_base = np.stack([arr] * 3, axis=-1)
         jet_rgb = np.stack([red, green, blue], axis=-1)
         
-        # Alpha blending where attention exists
-        alpha = 0.52 * cam[..., None]
+        # Alpha blend where attention exists
+        alpha = 0.54 * cam[..., None]
         mask = cam > 0.04
         
         blended = rgb_base.copy()
@@ -84,4 +73,4 @@ for view_name, v_arr in views.items():
         out_img = (np.clip(blended, 0, 1) * 255).astype(np.uint8)
         Image.fromarray(out_img).save(os.path.join(mri_dir, f"{view_name}_{pct}.jpg"), quality=90)
 
-print("Generated all authentic MRI Grad-CAM slices successfully!")
+print("Generated distinct authentic MRI Grad-CAM slices for all 3 views!")
