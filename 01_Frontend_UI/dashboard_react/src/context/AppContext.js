@@ -204,10 +204,26 @@ function appReducer(state, action) {
         return state;
       }
       const mergedMap = new Map();
-      fetchedList.forEach((sc) => mergedMap.set(sc.scanId || sc.scan_id_string || sc.id, sc));
-      state.scans.forEach((sc) => {
+      // First populate with existing local state (which has sign-offs)
+      (state.scans || []).forEach((sc) => {
         const id = sc.scanId || sc.scan_id_string || sc.id;
-        if (!mergedMap.has(id)) mergedMap.set(id, sc);
+        if (id) mergedMap.set(id, sc);
+      });
+
+      // Merge fetched scans while preserving local doctor sign-offs and notes
+      fetchedList.forEach((sc) => {
+        const id = sc.scanId || sc.scan_id_string || sc.id;
+        if (id) {
+          const existing = mergedMap.get(id) || {};
+          mergedMap.set(id, {
+            ...sc,
+            doctorStatus: existing.doctorStatus || sc.doctorStatus || 'pending',
+            doctorNotes: existing.doctorNotes || sc.doctorNotes || '',
+            isSignedOff: existing.isSignedOff !== undefined ? existing.isSignedOff : sc.isSignedOff,
+            signedOffAt: existing.signedOffAt || sc.signedOffAt,
+            signedOffBy: existing.signedOffBy || sc.signedOffBy,
+          });
+        }
       });
       const finalList = Array.from(mergedMap.values());
       try {

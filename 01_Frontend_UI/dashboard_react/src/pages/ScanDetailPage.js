@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
@@ -82,21 +82,53 @@ export default function ScanDetailPage() {
   const pMrn = patient.patient_code || patient.mrn || 'NA-2026-0042';
   const pInitials = pName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'PT';
 
-  const scanTargetId = scan.scanId || scan.scan_id_string || scan.id || scanId;
-  const storageKey = `na_signoff_${scanTargetId}`;
-  const localSaved = (() => {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) || 'null');
-    } catch {
-      return null;
-    }
-  })();
+  // Consistent target scan ID from URL or list
+  const currentScanId = scanId || rawScan?.scanId || rawScan?.scan_id_string || rawScan?.id || 'SCN-DEFAULT';
+  const storageKey = `na_signoff_${currentScanId}`;
 
-  const [decisionNotes, setDecisionNotes] = useState(localSaved?.notes || scan.doctorNotes || '');
-  const [selectedStatus, setSelectedStatus] = useState(localSaved?.status || scan.doctorStatus || 'accepted');
-  const [isSignedOff, setIsSignedOff] = useState(Boolean(localSaved?.isSignedOff || scan.isSignedOff));
-  const [signedOffTime, setSignedOffTime] = useState(localSaved?.signedOffAt || scan.signedOffAt || (scan.isSignedOff ? new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''));
+  // Helper to read sign-off from localStorage or memory
+  const getSavedDecision = () => {
+    try {
+      const direct = localStorage.getItem(storageKey);
+      if (direct) return JSON.parse(direct);
+      const allScans = JSON.parse(localStorage.getItem('na_scans') || '[]');
+      const match = allScans.find(s => (s.scanId || s.scan_id_string || s.id) === currentScanId);
+      if (match && (match.isSignedOff || (match.doctorStatus && match.doctorStatus !== 'pending'))) {
+        return {
+          status: match.doctorStatus,
+          notes: match.doctorNotes,
+          isSignedOff: true,
+          signedOffAt: match.signedOffAt,
+          signedOffBy: match.signedOffBy
+        };
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const initialSaved = getSavedDecision();
+  const [decisionNotes, setDecisionNotes] = useState(initialSaved?.notes || scan.doctorNotes || '');
+  const [selectedStatus, setSelectedStatus] = useState(initialSaved?.status || scan.doctorStatus || 'accepted');
+  const [isSignedOff, setIsSignedOff] = useState(Boolean(initialSaved?.isSignedOff || scan.isSignedOff));
+  const [signedOffTime, setSignedOffTime] = useState(initialSaved?.signedOffAt || scan.signedOffAt || '');
   const [showReportModal, setShowReportModal] = useState(false);
+
+  // Sync state whenever scanId or localStorage changes
+  useEffect(() => {
+    const saved = getSavedDecision();
+    if (saved) {
+      setSelectedStatus(saved.status || 'accepted');
+      setDecisionNotes(saved.notes || '');
+      setIsSignedOff(Boolean(saved.isSignedOff));
+      setSignedOffTime(saved.signedOffAt || '');
+    } else if (rawScan?.isSignedOff || (rawScan?.doctorStatus && rawScan.doctorStatus !== 'pending')) {
+      setSelectedStatus(rawScan.doctorStatus);
+      setDecisionNotes(rawScan.doctorNotes || '');
+      setIsSignedOff(true);
+      setSignedOffTime(rawScan.signedOffAt || '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentScanId, scansList, rawScan]);
 
   const handleFinalSignOff = () => {
     if (isSignedOff) return;
@@ -105,19 +137,19 @@ export default function ScanDetailPage() {
     setIsSignedOff(true);
 
     const signOffPayload = {
-      scanId: scanTargetId,
+      scanId: currentScanId,
       status: selectedStatus,
       notes: decisionNotes,
       isSignedOff: true,
       signedOffAt: timestamp,
-      signedOffBy: patient.assignedDoctor || 'Dr. Krishnam'
+      signedOffBy: patient.assignedDoctor || loggedInDoctor || 'Dr. Krishnam'
     };
 
-    // Save to permanent localStorage keyed for this scan
+    // Save permanently in localStorage under direct key
     try {
       localStorage.setItem(storageKey, JSON.stringify(signOffPayload));
     } catch (e) {
-      console.warn('Could not save to localStorage:', e);
+      console.warn('Could not save signoff to localStorage:', e);
     }
 
     dispatch({
