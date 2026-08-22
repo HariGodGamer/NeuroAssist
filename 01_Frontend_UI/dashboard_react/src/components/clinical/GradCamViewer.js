@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { LuBrain } from 'react-icons/lu';
-import { FiLayers, FiCrosshair, FiEye } from 'react-icons/fi';
+import { FiLayers, FiCrosshair, FiEye, FiRotateCcw } from 'react-icons/fi';
 
 /**
  * GradCamViewer — Hospital PACS Radiologist 3D MRI & Grad-CAM Heatmap Viewer
- * Fixed anatomical targeting reticle with interactive toggle controls.
+ * Fully interactive movable crosshair with real-time coordinate tracking & 3D slice depth.
  */
 export default function GradCamViewer({
   scanId = 'SCN-849201',
@@ -17,6 +17,11 @@ export default function GradCamViewer({
   const [zoomScale, setZoomScale] = useState(100); // 80 to 140
   const [showCrosshair, setShowCrosshair] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
+  
+  // Interactive Crosshair Position (X, Y in percentage 0-100)
+  const [crosshairPos, setCrosshairPos] = useState({ x: 50, y: 50 });
+  const [isDragging, setIsDragging] = useState(false);
+  const imageContainerRef = useRef(null);
 
   // Map 0-100 slider to nearest 5% real slice file
   const roundedSlice = Math.min(100, Math.max(0, Math.round(sliceIndex / 5) * 5));
@@ -25,6 +30,28 @@ export default function GradCamViewer({
   const realMriSrc = showHeatmap 
     ? `/assets/mri/${activeSliceView}_${roundedSlice}.jpg`
     : `/assets/mri/${activeSliceView}_raw.jpg`;
+
+  // Handle interactive mouse drag/click to move crosshair anywhere on MRI
+  const handlePointerMove = (e) => {
+    if (!imageContainerRef.current) return;
+    const rect = imageContainerRef.current.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0]?.clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0]?.clientY);
+    if (clientX === undefined || clientY === undefined) return;
+
+    const posX = Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100));
+    const posY = Math.max(5, Math.min(95, ((clientY - rect.top) / rect.height) * 100));
+    setCrosshairPos({ x: Math.round(posX), y: Math.round(posY) });
+  };
+
+  const handlePointerDown = (e) => {
+    setIsDragging(true);
+    handlePointerMove(e);
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+  };
 
   // Anatomical landmark descriptor
   const getLandmarkText = () => {
@@ -46,7 +73,7 @@ export default function GradCamViewer({
   };
 
   return (
-    <div className="clinical-card p-5 bg-white space-y-4 shadow-clinical border border-[#E8E2DA] rounded-2xl">
+    <div className="clinical-card p-5 bg-white space-y-4 shadow-clinical border border-[#E8E2DA] rounded-2xl select-none">
       
       {/* Header with spacious, non-overlapping layout */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#E8E2DA]">
@@ -83,16 +110,30 @@ export default function GradCamViewer({
         </div>
       </div>
 
-      {/* Real DICOM Clinical MRI Screen - Clean & Uncluttered */}
-      <div className="relative rounded-2xl border border-[#2A2D34] overflow-hidden bg-[#000000] shadow-2xl flex items-center justify-center aspect-square max-h-[380px] w-full">
+      {/* Real DICOM Clinical MRI Screen - Interactive Drag/Click Viewport */}
+      <div 
+        ref={imageContainerRef}
+        onMouseDown={handlePointerDown}
+        onMouseMove={(e) => isDragging && handlePointerMove(e)}
+        onMouseUp={handlePointerUp}
+        onTouchStart={handlePointerDown}
+        onTouchMove={(e) => isDragging && handlePointerMove(e)}
+        onTouchEnd={handlePointerUp}
+        className="relative rounded-2xl border border-[#2A2D34] overflow-hidden bg-[#000000] shadow-2xl flex items-center justify-center aspect-square max-h-[380px] w-full cursor-crosshair group"
+      >
         
+        {/* Top-Left Live Coordinate HUD */}
+        <div className="absolute top-3 left-3 z-20 bg-black/80 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg text-[9px] font-mono text-[#4ADE80] font-bold pointer-events-none shadow-md">
+          TARGET: X:{crosshairPos.x}% · Y:{crosshairPos.y}% · Z:{sliceIndex}%
+        </div>
+
         {/* Top-Right Slice Position Badge */}
         <div className="absolute top-3 right-3 z-20 bg-black/85 backdrop-blur-xs border border-[#4ADE80]/60 px-2.5 py-1 rounded-lg text-[10px] font-mono text-[#4ADE80] font-bold pointer-events-none shadow-md">
           SLICE {sliceIndex.toString().padStart(3, '0')} / 100
         </div>
 
         {/* Real High-Resolution Hospital MRI Scan Image with Zoom Support */}
-        <div className="relative w-full h-full flex items-center justify-center p-0 overflow-hidden bg-black">
+        <div className="relative w-full h-full flex items-center justify-center p-0 overflow-hidden bg-black pointer-events-none">
           <img
             src={realMriSrc}
             alt={`Clinical MRI ${activeSliceView} slice ${sliceIndex}`}
@@ -102,71 +143,76 @@ export default function GradCamViewer({
             }}
           />
 
-          {/* Anatomical Center Target Reticle (Locks onto Diagnostic Region) */}
+          {/* Movable Laser Crosshair & Targeting Reticle */}
           {showCrosshair && (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.7 }}>
-              {/* Subtle Horizontal center guide */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.85 }}>
+              {/* Dynamic Horizontal Laser Line */}
               <line
                 x1="0"
-                y1="50%"
+                y1={`${crosshairPos.y}%`}
                 x2="100%"
-                y2="50%"
+                y2={`${crosshairPos.y}%`}
                 stroke="#4ade80"
-                strokeWidth="0.8"
-                strokeDasharray="4 6"
+                strokeWidth="0.9"
+                strokeDasharray="4 5"
               />
-              {/* Subtle Vertical center guide */}
+              {/* Dynamic Vertical Laser Line */}
               <line
-                x1="50%"
+                x1={`${crosshairPos.x}%`}
                 y1="0"
-                x2="50%"
+                x2={`${crosshairPos.x}%`}
                 y2="100%"
                 stroke="#4ade80"
-                strokeWidth="0.8"
-                strokeDasharray="4 6"
+                strokeWidth="0.9"
+                strokeDasharray="4 5"
               />
-              {/* Central Target Reticle */}
+              {/* Central Target Circle Dot */}
               <circle
-                cx="50%"
-                cy="50%"
+                cx={`${crosshairPos.x}%`}
+                cy={`${crosshairPos.y}%`}
                 r="6"
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <circle
-                cx="50%"
-                cy="50%"
-                r="1.5"
+                cx={`${crosshairPos.x}%`}
+                cy={`${crosshairPos.y}%`}
+                r="2"
                 fill="#4ade80"
               />
-              {/* Precision Target Brackets */}
+              {/* Precision Target Brackets that follow coordinate */}
               <polyline
-                points="46%,48% 46%,46% 48%,46%"
+                points={`${crosshairPos.x - 3.5}%,${crosshairPos.y - 1.5}% ${crosshairPos.x - 3.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x - 1.5}%,${crosshairPos.y - 3.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points="54%,48% 54%,46% 52%,46%"
+                points={`${crosshairPos.x + 1.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y - 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y - 1.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points="46%,52% 46%,54% 48%,54%"
+                points={`${crosshairPos.x - 3.5}%,${crosshairPos.y + 1.5}% ${crosshairPos.x - 3.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x - 1.5}%,${crosshairPos.y + 3.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
               <polyline
-                points="54%,52% 54%,54% 52%,54%"
+                points={`${crosshairPos.x + 1.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y + 3.5}% ${crosshairPos.x + 3.5}%,${crosshairPos.y + 1.5}%`}
                 fill="none"
                 stroke="#4ade80"
                 strokeWidth="1.5"
               />
             </svg>
           )}
+        </div>
+
+        {/* Click/Drag Hint Overlay when hovering */}
+        <div className="absolute bottom-3 left-3 z-20 bg-black/75 backdrop-blur-xs border border-white/10 px-2 py-0.5 rounded text-[8px] font-mono text-white/70 pointer-events-none">
+          CLICK / DRAG TO MOVE CROSSHAIR
         </div>
 
         {/* Bottom-Right Colormap Legend */}
@@ -205,12 +251,22 @@ export default function GradCamViewer({
 
         {/* Landmark & Interactive Toggle Tools */}
         <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E8E2DA]">
-          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[200px]">
+          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[190px]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#7A1F2B] shrink-0" />
             <span className="truncate">{getLandmarkText()}</span>
           </span>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Center Reticle Reset */}
+            <button
+              type="button"
+              onClick={() => setCrosshairPos({ x: 50, y: 50 })}
+              title="Reset Crosshair to Center"
+              className="p-1.5 rounded-md text-[10px] font-semibold border bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3] transition-all"
+            >
+              <FiRotateCcw className="w-3 h-3" />
+            </button>
+
             {/* Toggle Heatmap Overlay */}
             <button
               type="button"
@@ -222,7 +278,7 @@ export default function GradCamViewer({
               }`}
             >
               <FiEye className="w-3 h-3" />
-              <span>{showHeatmap ? 'Heatmap ON' : 'Heatmap OFF'}</span>
+              <span>{showHeatmap ? 'Heatmap' : 'Grayscale'}</span>
             </button>
 
             {/* Toggle Crosshair */}
@@ -236,7 +292,7 @@ export default function GradCamViewer({
               }`}
             >
               <FiCrosshair className="w-3 h-3" />
-              <span>{showCrosshair ? 'Crosshair ON' : 'OFF'}</span>
+              <span>Crosshair</span>
             </button>
 
             {/* Zoom Slider */}
@@ -246,7 +302,7 @@ export default function GradCamViewer({
               max="140"
               value={zoomScale}
               onChange={(e) => setZoomScale(Number(e.target.value))}
-              className="w-16 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer ml-1"
+              className="w-14 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer ml-0.5"
               title={`Zoom: ${zoomScale}%`}
             />
           </div>
