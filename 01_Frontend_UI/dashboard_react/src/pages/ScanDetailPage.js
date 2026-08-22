@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import RiskGaugeArc from '../components/clinical/RiskGaugeArc';
+import GradCamViewer from '../components/clinical/GradCamViewer';
 import StatusBadge from '../components/common/StatusBadge';
 import ClinicalReportModal from '../components/clinical/ClinicalReportModal';
 import { generateScanData } from '../utils/mockDataGenerator';
@@ -16,7 +17,6 @@ import {
   FiCheckCircle,
   FiTrash2
 } from 'react-icons/fi';
-import { LuBrain } from 'react-icons/lu';
 
 export default function ScanDetailPage() {
   const { scanId } = useParams();
@@ -279,36 +279,16 @@ export default function ScanDetailPage() {
 
           </div>
 
-          {/* Right 6 Cols: Doctor Decision Panel & Patient Metadata */}
+          {/* Right 6 Cols: Grad-CAM Slice Workstation & Doctor Decision Panel */}
           <div className="lg:col-span-6 space-y-6">
 
-            {/* Patient Clinical & Scan Metadata Overview */}
-            <div className="clinical-card p-5 bg-white space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-[#E8E2DA]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A756F]">
-                  Clinical Examination & Acquisition Details
-                </h4>
-                <span className="text-[10px] font-mono text-[#A39E98]">{scan.scanId}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA]">
-                  <span className="text-[10px] uppercase font-bold text-[#A39E98] block">Patient Name</span>
-                  <span className="font-bold text-[#22201F] text-sm">{pName}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA]">
-                  <span className="text-[10px] uppercase font-bold text-[#A39E98] block">Medical Record #</span>
-                  <span className="font-mono font-bold text-[#22201F]">{pMrn}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA]">
-                  <span className="text-[10px] uppercase font-bold text-[#A39E98] block">Demographics</span>
-                  <span className="font-semibold text-[#22201F]">{patient.age || scan.patientAge || '65'} Yrs · {patient.gender || scan.patientGender || 'Female'}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA]">
-                  <span className="text-[10px] uppercase font-bold text-[#A39E98] block">Acquisition Date</span>
-                  <span className="font-semibold text-[#22201F]">{scan.uploadDate}</span>
-                </div>
-              </div>
-            </div>
+            {/* Grad-CAM Volumetric 3D Slice Workstation */}
+            <GradCamViewer
+              scanId={scan.scanId}
+              condition={scan.prediction}
+              confidence={scan.confidence}
+              patientName={pName}
+            />
 
             {/* Doctor Decision Panel (Accept / Flag / Override) */}
             <div className="clinical-card p-5 bg-white space-y-4">

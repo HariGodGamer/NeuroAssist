@@ -8,6 +8,7 @@ import models
 from database import scans_col, patients_col, review_queue_col
 from auth import get_current_user, require_role
 from ml.inference import run_inference
+from ml.gradcam_engine import generate_brain_heatmap_slices, get_slice_image_path
 from utils.audit import log_audit
 from utils.pdf_report import generate_pdf_report
 
@@ -130,8 +131,24 @@ async def analyze_scan(
 
     pred_idx = {"CN": 0, "MCI": 1, "AD": 2}.get(inference_result["prediction"], 1)
     preprocessed_volume = inference_result.pop("preprocessed_volume", None)
+    # --- Generate real Grad-CAM ---
+    gradcam_result = None
+    try:
+        gradcam_result = generate_brain_heatmap_slices(
+            scan_id=scan_id,
+            prediction_class=pred_idx,
+            brain_regions=inference_result["brain_regions"],
+            preprocessed_volume=preprocessed_volume,
+            output_dir=GRADCAM_DIR,
+        )
+    except Exception as e:
+        logger.warning(f"[WARN] Grad-CAM generation failed: {e}")
 
     gradcam_axial = gradcam_coronal = gradcam_sagittal = None
+    if gradcam_result and "slice_paths" in gradcam_result:
+        gradcam_axial = gradcam_result["slice_paths"].get("axial")
+        gradcam_coronal = gradcam_result["slice_paths"].get("coronal")
+        gradcam_sagittal = gradcam_result["slice_paths"].get("sagittal")
 
     biomarkers = inference_result["biomarkers"]
     update_doc = {
@@ -411,6 +428,17 @@ async def get_scan_slice(
         
     prediction = scan.get("prediction") or "MCI"
     brain_regions = scan.get("brain_regions") or {}
-    
-    raise HTTPException(status_code=404, detail="Slice viewer disabled")
+    try:
+        output_path = get_slice_image_path(
+            scan_id=scan_id,
+            view_name=view_name,
+            slice_percent=slice_index,
+            prediction=prediction,
+            brain_regions=brain_regions,
+            file_path=file_path
+        )
+        return FileResponse(output_path, media_type="image/png")
+    except Exception as e:
+        logger.error(f"Error rendering dynamic slice: {e}")
+        raise HTTPException(status_code=500, detail=f"Error rendering slice: {str(e)}")
 
