@@ -211,75 +211,7 @@ export default function ScanDetailPage() {
         {/* Core Layout: Diagnostic Indicators & Doctor Sign-off Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left 6 Cols: Risk Gauge & Volumetric Biomarkers */}
-          <div className="lg:col-span-6 space-y-6">
-            
-            {/* Risk Gauge Arc */}
-            <RiskGaugeArc
-              score={scan.riskScore}
-              probabilities={scan.probabilities}
-              prediction={scan.prediction}
-              confidence={scan.confidence}
-            />
-
-            {/* Volumetric Biomarkers Telemetry Cards with Severity Indicators & Horizontal Bars */}
-            <div className="clinical-card p-5 bg-white space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-[#E8E2DA]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A756F]">
-                  Volumetric Biomarker Indicators
-                </h4>
-                <span className="text-[10px] font-mono text-[#A39E98]">SimpleITK v2.3</span>
-              </div>
-
-              <div className="space-y-3">
-                {biomarkerCards.map((bio, idx) => (
-                  <div key={idx} className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] text-xs space-y-2">
-                    {/* Header: Dot + Name + Value */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
-                          style={{ backgroundColor: bio.color }}
-                        />
-                        <span className="font-semibold text-[#22201F]">{bio.name}</span>
-                      </div>
-                      <span className="font-mono font-bold text-[#22201F]">{bio.val}</span>
-                    </div>
-
-                    {/* Deviation & Badge row */}
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="text-[#7A756F]">{bio.dev}</span>
-                      <span
-                        className="px-2 py-0.5 rounded-full font-semibold border"
-                        style={{ color: bio.color, backgroundColor: bio.bg, borderColor: bio.color + '40' }}
-                      >
-                        {bio.badge}
-                      </span>
-                    </div>
-
-                    {/* Severity Scale Horizontal Bar */}
-                    <div className="space-y-1 pt-1 border-t border-[#F0E8E1]">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-[#A39E98]">{bio.normRange}</span>
-                        <span className="font-mono font-bold" style={{ color: bio.color }}>
-                          Severity: {bio.severityPct}%
-                        </span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-[#E8E2DA] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
-                          style={{ width: `${bio.severityPct}%`, backgroundColor: bio.color }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right 6 Cols: Grad-CAM Slice Workstation & Doctor Decision Panel */}
+          {/* Left 6 Cols: Grad-CAM Slice Workstation & Doctor Decision Panel */}
           <div className="lg:col-span-6 space-y-6">
 
             {/* Grad-CAM Volumetric 3D Slice Workstation */}
@@ -358,27 +290,103 @@ export default function ScanDetailPage() {
                   rows={3}
                   value={decisionNotes}
                   onChange={(e) => setDecisionNotes(e.target.value)}
-                  placeholder="Enter clinical observations, differential diagnosis, and recommended cognitive follow-up..."
-                  className="clinical-input resize-none text-xs leading-relaxed"
+                  placeholder="Enter radiologist impression, treatment notes, or override rationale..."
+                  className="w-full p-3 rounded-xl border border-[#E8E2DA] bg-[#FAF6F3] text-xs text-[#22201F] focus:outline-none focus:border-[#7A1F2B] transition-colors resize-none placeholder:text-[#A39E98]"
                 />
               </div>
 
-              {/* Save & Sign-off Button */}
-              <button
-                type="button"
-                onClick={() => handleDecision(scan.doctorStatus || 'accepted')}
-                className="w-full py-2.5 bg-[#7A1F2B] hover:bg-[#661823] text-white rounded-xl text-xs font-semibold transition-all shadow-clinical-sm flex items-center justify-center gap-2"
-              >
-                <FiCheckCircle className="w-4 h-4" />
-                <span>Save Diagnostic Sign-Off</span>
-              </button>
-
-              {savedSuccess && (
-                <div className="p-2.5 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] text-[#2E523A] text-xs flex items-center justify-center gap-2 animate-fade-in">
-                  <FiCheckCircle className="w-4 h-4" />
-                  <span>Diagnostic sign-off and clinical notes recorded.</span>
+              {/* Save Decision CTA */}
+              <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[11px] text-[#7A756F]">
+                    <FiCheckCircle className="w-3.5 h-3.5 text-[#4A7C59]" />
+                    <span>
+                      Status: <strong className="text-[#22201F] capitalize">{scan.doctorStatus || 'Pending Review'}</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDecision(scan.doctorStatus || 'accepted')}
+                    className="btn-clinical-primary py-2 px-4 text-xs font-semibold"
+                  >
+                    Save Sign-Off
+                  </button>
                 </div>
-              )}
+                {savedSuccess && (
+                  <div className="p-2 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] text-[#2E523A] text-xs flex items-center justify-center gap-1.5">
+                    <FiCheckCircle className="w-4 h-4" />
+                    <span>Diagnostic sign-off and clinical notes recorded.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Right 6 Cols: Risk Gauge & Volumetric Biomarkers */}
+          <div className="lg:col-span-6 space-y-6">
+            
+            {/* Risk Gauge Arc */}
+            <RiskGaugeArc
+              score={scan.riskScore}
+              probabilities={scan.probabilities}
+              prediction={scan.prediction}
+              confidence={scan.confidence}
+            />
+
+            {/* Volumetric Biomarkers Telemetry Cards with Severity Indicators & Horizontal Bars */}
+            <div className="clinical-card p-5 bg-white space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-[#E8E2DA]">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-[#7A756F]">
+                  Volumetric Biomarker Indicators
+                </h4>
+                <span className="text-[10px] font-mono text-[#A39E98]">SimpleITK v2.3</span>
+              </div>
+
+              <div className="space-y-3">
+                {biomarkerCards.map((bio, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] text-xs space-y-2">
+                    {/* Header: Dot + Name + Value */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full inline-block shadow-sm"
+                          style={{ backgroundColor: bio.color }}
+                        />
+                        <span className="font-semibold text-[#22201F]">{bio.name}</span>
+                      </div>
+                      <span className="font-mono font-bold text-[#22201F]">{bio.val}</span>
+                    </div>
+
+                    {/* Deviation & Badge row */}
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-[#7A756F]">{bio.dev}</span>
+                      <span
+                        className="px-2 py-0.5 rounded-full font-semibold border"
+                        style={{ color: bio.color, backgroundColor: bio.bg, borderColor: bio.color + '40' }}
+                      >
+                        {bio.badge}
+                      </span>
+                    </div>
+
+                    {/* Severity Scale Horizontal Bar */}
+                    <div className="space-y-1 pt-1 border-t border-[#F0E8E1]">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-[#A39E98]">{bio.normRange}</span>
+                        <span className="font-mono font-bold" style={{ color: bio.color }}>
+                          Severity: {bio.severityPct}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-[#E8E2DA] overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${bio.severityPct}%`, backgroundColor: bio.color }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
           </div>

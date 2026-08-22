@@ -4,7 +4,7 @@ import { FiLayers } from 'react-icons/fi';
 
 /**
  * GradCamViewer — Hospital PACS Radiologist 3D MRI & Grad-CAM Heatmap Viewer
- * Uses real high-resolution T1-weighted neuroimaging DICOM slices with genuine JET heatmap overlays.
+ * Clean, non-overlapping, high-resolution DICOM neuroimaging viewer.
  */
 export default function GradCamViewer({
   scanId = 'SCN-849201',
@@ -42,27 +42,24 @@ export default function GradCamViewer({
   return (
     <div className="clinical-card p-5 bg-white space-y-4 shadow-clinical border border-[#E8E2DA] rounded-2xl">
       
-      {/* Header & Viewport Tabs */}
-      <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-[#F8EAED] text-[#7A1F2B] flex items-center justify-center border border-[#ECC8CF]">
+      {/* Header with spacious, non-overlapping layout */}
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-[#E8E2DA]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-[#F8EAED] text-[#7A1F2B] flex items-center justify-center border border-[#ECC8CF] shrink-0">
             <LuBrain className="w-4 h-4" />
           </div>
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#22201F] flex items-center gap-1.5">
-              <span>Grad-CAM Explainability Heatmap</span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#FAF6F3] border border-[#E8E2DA] text-[#7A1F2B] font-bold">
-                T1-MRI · 3D CNN
-              </span>
+          <div className="min-w-0">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#22201F] truncate">
+              Grad-CAM Explainability Heatmap
             </h4>
-            <p className="text-[10px] text-[#7A756F]">
-              MedicalNet ResNet-10 Layer4 · Volumetric Attention Overlay
+            <p className="text-[10px] text-[#7A756F] truncate">
+              MedicalNet ResNet-10 · Layer4 Attention
             </p>
           </div>
         </div>
 
         {/* Viewport Selectors (Axial, Coronal, Sagittal) */}
-        <div className="flex bg-[#FAF6F3] p-1 rounded-xl border border-[#E8E2DA] gap-1">
+        <div className="flex bg-[#FAF6F3] p-1 rounded-xl border border-[#E8E2DA] gap-1 shrink-0">
           {['axial', 'coronal', 'sagittal'].map((v) => (
             <button
               key={v}
@@ -80,17 +77,9 @@ export default function GradCamViewer({
         </div>
       </div>
 
-      {/* Real DICOM Clinical MRI Screen */}
+      {/* Real DICOM Clinical MRI Screen - Clean & Uncluttered */}
       <div className="relative rounded-2xl border border-[#2A2D34] overflow-hidden bg-[#000000] shadow-2xl flex items-center justify-center aspect-square max-h-[380px] w-full">
         
-        {/* Top-Left Radiologist DICOM Header Overlay */}
-        <div className="absolute top-3 left-3 z-20 font-mono text-[9px] text-[#C4C0BB] flex flex-col pointer-events-none bg-black/80 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-white/15 shadow-md leading-tight">
-          <span className="text-white font-bold tracking-wider">VIEW: {activeSliceView.toUpperCase()}</span>
-          <span className="text-[#4ADE80]">COORD: Z={sliceIndex}%</span>
-          <span className="text-white/70">TR: 170ms · TE: 12.2ms</span>
-          <span className="text-white/70">SLICE: 1.0mm · T1-DICOM</span>
-        </div>
-
         {/* Top-Right Slice Position Badge */}
         <div className="absolute top-3 right-3 z-20 bg-black/85 backdrop-blur-xs border border-[#4ADE80]/60 px-2.5 py-1 rounded-lg text-[10px] font-mono text-[#4ADE80] font-bold pointer-events-none shadow-md">
           SLICE {sliceIndex.toString().padStart(3, '0')} / 100
@@ -154,16 +143,10 @@ export default function GradCamViewer({
           </svg>
         </div>
 
-        {/* Bottom-Left Status Pill */}
-        <div className="absolute bottom-3 left-3 z-20 bg-black/85 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg text-[9px] text-[#4ADE80] font-mono flex items-center gap-1.5 pointer-events-none shadow-md">
-          <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse" />
-          <span className="font-bold tracking-wider">REAL CLINICAL GRAD-CAM ACTIVE</span>
-        </div>
-
         {/* Bottom-Right Colormap Legend */}
         <div className="absolute bottom-3 right-3 z-20 bg-black/85 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg flex items-center gap-1.5 pointer-events-none shadow-md">
           <span className="text-[9px] font-mono text-white/80 font-semibold">LOW</span>
-          <div className="w-14 h-2.5 rounded bg-gradient-to-r from-blue-600 via-green-400 via-yellow-400 to-red-600 border border-white/20" />
+          <div className="w-14 h-2 rounded bg-gradient-to-r from-blue-600 via-green-400 via-yellow-400 to-red-600 border border-white/20" />
           <span className="text-[9px] font-mono text-white/80 font-semibold">HIGH</span>
         </div>
       </div>
