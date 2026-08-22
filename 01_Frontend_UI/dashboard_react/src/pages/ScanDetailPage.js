@@ -361,24 +361,28 @@ export default function ScanDetailPage() {
                   />
                 </div>
 
-                {/* Save Decision CTA */}
-                <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-[11px] text-[#7A756F]">
-                      <span className="w-2 h-2 rounded-full bg-[#B87326] animate-pulse" />
-                      <span>
-                        Status: <strong className="text-[#22201F] capitalize">{selectedStatus} (Unsaved)</strong>
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleFinalSignOff}
-                      className="btn-clinical-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
-                    >
-                      <FiCheckCircle className="w-3.5 h-3.5" />
-                      <span>Confirm & Lock Sign-Off</span>
-                    </button>
+                {/* Save Decision CTA - Highlighted & Prominent */}
+                <div className="space-y-3 pt-3 border-t border-[#E8E2DA]">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-[#7A756F]">Pending Confirmation:</span>
+                    <span className="font-mono text-xs font-bold text-[#7A1F2B] uppercase bg-[#F8EAED] px-2.5 py-0.5 rounded-full border border-[#ECC8CF] flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#7A1F2B] animate-pulse" />
+                      {selectedStatus}
+                    </span>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleFinalSignOff}
+                    className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-[#7A1F2B] via-[#8C2332] to-[#7A1F2B] hover:from-[#661823] hover:to-[#7A1F2B] text-white text-xs font-bold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 border border-[#ECC8CF]/30 active:scale-[0.99] cursor-pointer group"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <FiCheckCircle className="w-3.5 h-3.5 text-[#4ADE80]" />
+                    </div>
+                    <span className="tracking-wider uppercase text-[11px] font-bold">
+                      Confirm & Lock Sign-Off
+                    </span>
+                  </button>
                 </div>
               </div>
             )}
