@@ -15,7 +15,8 @@ import {
   FiArrowLeft, 
   FiShield, 
   FiCheckCircle,
-  FiTrash2
+  FiTrash2,
+  FiLock
 } from 'react-icons/fi';
 
 export default function ScanDetailPage() {
@@ -82,20 +83,24 @@ export default function ScanDetailPage() {
   const pInitials = pName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'PT';
 
   const [decisionNotes, setDecisionNotes] = useState(scan.doctorNotes || '');
+  const [selectedStatus, setSelectedStatus] = useState(scan.doctorStatus || 'accepted');
+  const [isSignedOff, setIsSignedOff] = useState(Boolean(scan.isSignedOff));
   const [showReportModal, setShowReportModal] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const handleDecision = (status) => {
+  const handleFinalSignOff = () => {
+    if (isSignedOff) return;
     dispatch({
       type: 'UPDATE_SCAN_DECISION',
       payload: {
         scanId: scan.scanId,
-        status: status,
+        status: selectedStatus,
         notes: decisionNotes,
+        isSignedOff: true,
+        signedOffAt: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        signedOffBy: patient.assignedDoctor || 'Dr. Krishnam'
       }
     });
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 3000);
+    setIsSignedOff(true);
   };
 
   // Biomarkers with region severity indicators and 0-100% horizontal bars
@@ -233,9 +238,9 @@ export default function ScanDetailPage() {
                     Physician Validation & Sign-Off
                   </h4>
                 </div>
-                <div className="text-[10px] font-semibold text-[#4A7C59] flex items-center gap-1">
-                  <FiShield className="w-3.5 h-3.5" />
-                  <span>Final Authority</span>
+                <div className={`text-[10px] font-semibold flex items-center gap-1 ${isSignedOff ? 'text-[#2E523A]' : 'text-[#4A7C59]'}`}>
+                  {isSignedOff ? <FiLock className="w-3.5 h-3.5 text-[#4A7C59]" /> : <FiShield className="w-3.5 h-3.5" />}
+                  <span>{isSignedOff ? 'Record Locked' : 'Final Authority'}</span>
                 </div>
               </div>
 
@@ -243,11 +248,14 @@ export default function ScanDetailPage() {
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
-                  onClick={() => handleDecision('accepted')}
+                  disabled={isSignedOff}
+                  onClick={() => !isSignedOff && setSelectedStatus('accepted')}
                   className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    scan.doctorStatus === 'accepted'
+                    selectedStatus === 'accepted'
                       ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5] shadow-clinical-sm'
-                      : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                      : isSignedOff 
+                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
                   }`}
                 >
                   <FiCheck className="w-4 h-4 text-[#4A7C59]" />
@@ -256,11 +264,14 @@ export default function ScanDetailPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleDecision('flagged')}
+                  disabled={isSignedOff}
+                  onClick={() => !isSignedOff && setSelectedStatus('flagged')}
                   className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    scan.doctorStatus === 'flagged'
+                    selectedStatus === 'flagged'
                       ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2] shadow-clinical-sm'
-                      : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                      : isSignedOff 
+                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
                   }`}
                 >
                   <FiFlag className="w-4 h-4 text-[#B87326]" />
@@ -269,11 +280,14 @@ export default function ScanDetailPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleDecision('overridden')}
+                  disabled={isSignedOff}
+                  onClick={() => !isSignedOff && setSelectedStatus('overridden')}
                   className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    scan.doctorStatus === 'overridden'
+                    selectedStatus === 'overridden'
                       ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF] shadow-clinical-sm'
-                      : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                      : isSignedOff 
+                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
                   }`}
                 >
                   <FiEdit3 className="w-4 h-4 text-[#7A1F2B]" />
@@ -283,39 +297,64 @@ export default function ScanDetailPage() {
 
               {/* Doctor Clinical Notes */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A756F]">
-                  Clinical Diagnosis Notes & Treatment Directives
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A756F] flex items-center justify-between">
+                  <span>Clinical Diagnosis Notes & Directives</span>
+                  {isSignedOff && (
+                    <span className="text-[10px] text-[#4A7C59] font-mono flex items-center gap-1 font-normal">
+                      <FiLock className="w-3 h-3" /> Read-Only
+                    </span>
+                  )}
                 </label>
                 <textarea
                   rows={3}
                   value={decisionNotes}
+                  disabled={isSignedOff}
+                  readOnly={isSignedOff}
                   onChange={(e) => setDecisionNotes(e.target.value)}
-                  placeholder="Enter radiologist impression, treatment notes, or override rationale..."
-                  className="w-full p-3 rounded-xl border border-[#E8E2DA] bg-[#FAF6F3] text-xs text-[#22201F] focus:outline-none focus:border-[#7A1F2B] transition-colors resize-none placeholder:text-[#A39E98]"
+                  placeholder={isSignedOff ? "No further clinical notes added." : "Enter radiologist impression, treatment notes, or override rationale..."}
+                  className={`w-full p-3 rounded-xl border border-[#E8E2DA] text-xs text-[#22201F] transition-colors resize-none placeholder:text-[#A39E98] ${
+                    isSignedOff ? 'bg-[#FAF6F3] cursor-not-allowed opacity-85' : 'bg-[#FAF6F3] focus:outline-none focus:border-[#7A1F2B]'
+                  }`}
                 />
               </div>
 
-              {/* Save Decision CTA */}
+              {/* Save / Locked Decision CTA */}
               <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#7A756F]">
-                    <FiCheckCircle className="w-3.5 h-3.5 text-[#4A7C59]" />
-                    <span>
-                      Status: <strong className="text-[#22201F] capitalize">{scan.doctorStatus || 'Pending Review'}</strong>
+                {isSignedOff ? (
+                  <div className="p-3 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#2E523A] text-white flex items-center justify-center">
+                        <FiLock className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-[#2E523A] block">
+                          Officially Confirmed & Locked
+                        </span>
+                        <span className="text-[10px] text-[#4A7C59]">
+                          Signed-off by Dr. Krishnam · Immutable Clinical Record
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-md bg-white border border-[#CFE3D5] text-[10px] font-mono font-bold text-[#2E523A] uppercase">
+                      {selectedStatus}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDecision(scan.doctorStatus || 'accepted')}
-                    className="btn-clinical-primary py-2 px-4 text-xs font-semibold"
-                  >
-                    Save Sign-Off
-                  </button>
-                </div>
-                {savedSuccess && (
-                  <div className="p-2 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] text-[#2E523A] text-xs flex items-center justify-center gap-1.5">
-                    <FiCheckCircle className="w-4 h-4" />
-                    <span>Diagnostic sign-off and clinical notes recorded.</span>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[11px] text-[#7A756F]">
+                      <span className="w-2 h-2 rounded-full bg-[#B87326] animate-pulse" />
+                      <span>
+                        Status: <strong className="text-[#22201F] capitalize">{selectedStatus} (Unsaved)</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleFinalSignOff}
+                      className="btn-clinical-primary py-2 px-4 text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <FiCheckCircle className="w-3.5 h-3.5" />
+                      <span>Confirm & Lock Sign-Off</span>
+                    </button>
                   </div>
                 )}
               </div>
