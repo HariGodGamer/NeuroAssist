@@ -230,119 +230,139 @@ export default function ScanDetailPage() {
               patientName={pName}
             />
 
-            {/* Doctor Decision Panel (Accept / Flag / Override) */}
-            <div className="clinical-card p-5 bg-white space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A1F2B] bg-[#F8EAED] px-2 py-0.5 rounded-full border border-[#ECC8CF]">
-                    Doctor Decision Panel
-                  </span>
-                  <h4 className="text-sm font-serif font-bold text-[#22201F] mt-1">
-                    Physician Validation & Sign-Off
-                  </h4>
-                </div>
-                <div className={`text-[10px] font-semibold flex items-center gap-1 ${isSignedOff ? 'text-[#2E523A]' : 'text-[#4A7C59]'}`}>
-                  {isSignedOff ? <FiLock className="w-3.5 h-3.5 text-[#4A7C59]" /> : <FiShield className="w-3.5 h-3.5" />}
-                  <span>{isSignedOff ? 'Record Locked' : 'Final Authority'}</span>
-                </div>
-              </div>
-
-              {/* Three Doctor Action Buttons */}
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  disabled={isSignedOff}
-                  onClick={() => !isSignedOff && setSelectedStatus('accepted')}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    selectedStatus === 'accepted'
-                      ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5] shadow-clinical-sm'
-                      : isSignedOff 
-                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
-                  }`}
-                >
-                  <FiCheck className="w-4 h-4 text-[#4A7C59]" />
-                  <span>Accept AI</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSignedOff}
-                  onClick={() => !isSignedOff && setSelectedStatus('flagged')}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    selectedStatus === 'flagged'
-                      ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2] shadow-clinical-sm'
-                      : isSignedOff 
-                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
-                  }`}
-                >
-                  <FiFlag className="w-4 h-4 text-[#B87326]" />
-                  <span>Flag Case</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSignedOff}
-                  onClick={() => !isSignedOff && setSelectedStatus('overridden')}
-                  className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
-                    selectedStatus === 'overridden'
-                      ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF] shadow-clinical-sm'
-                      : isSignedOff 
-                        ? 'bg-[#FAF6F3] text-[#A39E98] border-[#E8E2DA] opacity-40 cursor-not-allowed'
-                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
-                  }`}
-                >
-                  <FiEdit3 className="w-4 h-4 text-[#7A1F2B]" />
-                  <span>Override</span>
-                </button>
-              </div>
-
-              {/* Doctor Clinical Notes */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A756F] flex items-center justify-between">
-                  <span>Clinical Diagnosis Notes & Directives</span>
-                  {isSignedOff && (
-                    <span className="text-[10px] text-[#4A7C59] font-mono flex items-center gap-1 font-normal">
-                      <FiLock className="w-3 h-3" /> Read-Only
-                    </span>
-                  )}
-                </label>
-                <textarea
-                  rows={3}
-                  value={decisionNotes}
-                  disabled={isSignedOff}
-                  readOnly={isSignedOff}
-                  onChange={(e) => setDecisionNotes(e.target.value)}
-                  placeholder={isSignedOff ? "No further clinical notes added." : "Enter radiologist impression, treatment notes, or override rationale..."}
-                  className={`w-full p-3 rounded-xl border border-[#E8E2DA] text-xs text-[#22201F] transition-colors resize-none placeholder:text-[#A39E98] ${
-                    isSignedOff ? 'bg-[#FAF6F3] cursor-not-allowed opacity-85' : 'bg-[#FAF6F3] focus:outline-none focus:border-[#7A1F2B]'
-                  }`}
-                />
-              </div>
-
-              {/* Save / Locked Decision CTA */}
-              <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
-                {isSignedOff ? (
-                  <div className="p-3.5 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-[#2E523A] text-white flex items-center justify-center shrink-0 shadow-xs">
-                        <FiCheckCircle className="w-4 h-4 text-[#4ADE80]" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-[#2E523A] block">
-                          Review Recorded
-                        </span>
-                        <span className="text-[11px] font-mono text-[#4A7C59] block">
-                          Recorded on {signedOffTime || 'Just now'} · {patient.assignedDoctor || 'Dr. Krishnam'}
-                        </span>
-                      </div>
+            {/* Doctor Decision Panel (Switch to clean Review Recorded upon confirmation) */}
+            {isSignedOff ? (
+              <div className="clinical-card p-5 bg-white space-y-4 border border-[#CFE3D5] shadow-clinical animate-fade-in">
+                {/* Confirmed Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#EDF5F0] text-[#2E523A] flex items-center justify-center border border-[#CFE3D5] shadow-2xs">
+                      <FiCheckCircle className="w-4 h-4 text-[#4A7C59]" />
                     </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#CFE3D5] text-[10px] font-mono font-bold text-[#2E523A] uppercase tracking-wider shadow-2xs">
-                      {selectedStatus}
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#2E523A] bg-[#EDF5F0] px-2 py-0.5 rounded-full border border-[#CFE3D5]">
+                        Review Recorded
+                      </span>
+                      <h4 className="text-sm font-serif font-bold text-[#22201F] mt-0.5">
+                        Physician Validation Confirmed
+                      </h4>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-semibold text-[#2E523A] bg-[#EDF5F0] px-2.5 py-1 rounded-lg border border-[#CFE3D5]">
+                    <FiLock className="w-3.5 h-3.5 text-[#4A7C59]" />
+                    <span>Locked</span>
+                  </div>
+                </div>
+
+                {/* Decision Summary Box */}
+                <div className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-[#7A756F] font-semibold uppercase tracking-wider">
+                      Recorded Decision:
+                    </span>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase border shadow-2xs ${
+                      selectedStatus === 'accepted' ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5]' :
+                      selectedStatus === 'flagged' ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2]' :
+                      'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF]'
+                    }`}>
+                      {selectedStatus === 'accepted' ? '✓ Accepted AI' : selectedStatus === 'flagged' ? '⚐ Flagged Case' : '✎ Overridden'}
                     </span>
                   </div>
-                ) : (
+
+                  {decisionNotes && (
+                    <div className="pt-2 border-t border-[#E8E2DA] text-xs text-[#22201F] leading-relaxed bg-white/70 p-2.5 rounded-lg border border-[#E8E2DA]/60">
+                      <span className="text-[10px] uppercase font-bold text-[#A39E98] block mb-1">Clinical Directives:</span>
+                      "{decisionNotes}"
+                    </div>
+                  )}
+                </div>
+
+                {/* Timestamp and Signer Audit Footer */}
+                <div className="flex items-center justify-between text-[11px] font-mono text-[#7A756F] pt-1">
+                  <span className="flex items-center gap-1.5 text-[#4A7C59] font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse" />
+                    <span>Recorded: {signedOffTime || 'Just now'}</span>
+                  </span>
+                  <span className="font-semibold text-[#22201F] font-sans">
+                    {patient.assignedDoctor || 'Dr. Krishnam'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="clinical-card p-5 bg-white space-y-4 shadow-clinical border border-[#E8E2DA]">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E8E2DA]">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A1F2B] bg-[#F8EAED] px-2 py-0.5 rounded-full border border-[#ECC8CF]">
+                      Doctor Decision Panel
+                    </span>
+                    <h4 className="text-sm font-serif font-bold text-[#22201F] mt-1">
+                      Physician Validation & Sign-Off
+                    </h4>
+                  </div>
+                  <div className="text-[10px] font-semibold text-[#4A7C59] flex items-center gap-1">
+                    <FiShield className="w-3.5 h-3.5" />
+                    <span>Final Authority</span>
+                  </div>
+                </div>
+
+                {/* Three Doctor Action Buttons */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatus('accepted')}
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                      selectedStatus === 'accepted'
+                        ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5] shadow-clinical-sm'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                    }`}
+                  >
+                    <FiCheck className="w-4 h-4 text-[#4A7C59]" />
+                    <span>Accept AI</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatus('flagged')}
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                      selectedStatus === 'flagged'
+                        ? 'bg-[#FAF3E8] text-[#8A5A14] border-[#F0DEC2] shadow-clinical-sm'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                    }`}
+                  >
+                    <FiFlag className="w-4 h-4 text-[#B87326]" />
+                    <span>Flag Case</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStatus('overridden')}
+                    className={`p-2.5 rounded-xl text-xs font-semibold border flex flex-col items-center gap-1.5 transition-all ${
+                      selectedStatus === 'overridden'
+                        ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF] shadow-clinical-sm'
+                        : 'bg-white text-[#7A756F] border-[#E8E2DA] hover:bg-[#FAF6F3]'
+                    }`}
+                  >
+                    <FiEdit3 className="w-4 h-4 text-[#7A1F2B]" />
+                    <span>Override</span>
+                  </button>
+                </div>
+
+                {/* Doctor Clinical Notes */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#7A756F]">
+                    Clinical Diagnosis Notes & Directives
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={decisionNotes}
+                    onChange={(e) => setDecisionNotes(e.target.value)}
+                    placeholder="Enter radiologist impression, treatment notes, or override rationale..."
+                    className="w-full p-3 rounded-xl border border-[#E8E2DA] bg-[#FAF6F3] text-xs text-[#22201F] focus:outline-none focus:border-[#7A1F2B] transition-colors resize-none placeholder:text-[#A39E98]"
+                  />
+                </div>
+
+                {/* Save Decision CTA */}
+                <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[11px] text-[#7A756F]">
                       <span className="w-2 h-2 rounded-full bg-[#B87326] animate-pulse" />
@@ -359,9 +379,9 @@ export default function ScanDetailPage() {
                       <span>Confirm & Lock Sign-Off</span>
                     </button>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
 
