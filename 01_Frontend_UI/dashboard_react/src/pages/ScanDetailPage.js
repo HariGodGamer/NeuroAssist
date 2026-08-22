@@ -85,10 +85,13 @@ export default function ScanDetailPage() {
   const [decisionNotes, setDecisionNotes] = useState(scan.doctorNotes || '');
   const [selectedStatus, setSelectedStatus] = useState(scan.doctorStatus || 'accepted');
   const [isSignedOff, setIsSignedOff] = useState(Boolean(scan.isSignedOff));
+  const [signedOffTime, setSignedOffTime] = useState(scan.signedOffAt || (scan.isSignedOff ? new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''));
   const [showReportModal, setShowReportModal] = useState(false);
 
   const handleFinalSignOff = () => {
     if (isSignedOff) return;
+    const timestamp = new Date().toLocaleDateString('en-GB') + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setSignedOffTime(timestamp);
     dispatch({
       type: 'UPDATE_SCAN_DECISION',
       payload: {
@@ -96,7 +99,7 @@ export default function ScanDetailPage() {
         status: selectedStatus,
         notes: decisionNotes,
         isSignedOff: true,
-        signedOffAt: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        signedOffAt: timestamp,
         signedOffBy: patient.assignedDoctor || 'Dr. Krishnam'
       }
     });
@@ -321,21 +324,21 @@ export default function ScanDetailPage() {
               {/* Save / Locked Decision CTA */}
               <div className="space-y-2 pt-2 border-t border-[#E8E2DA]">
                 {isSignedOff ? (
-                  <div className="p-3 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-[#2E523A] text-white flex items-center justify-center">
-                        <FiLock className="w-3.5 h-3.5" />
+                  <div className="p-3.5 rounded-xl bg-[#EDF5F0] border border-[#CFE3D5] flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-[#2E523A] text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <FiCheckCircle className="w-4 h-4 text-[#4ADE80]" />
                       </div>
                       <div>
                         <span className="text-xs font-bold text-[#2E523A] block">
-                          Officially Confirmed & Locked
+                          Review Recorded
                         </span>
-                        <span className="text-[10px] text-[#4A7C59]">
-                          Signed-off by Dr. Krishnam · Immutable Clinical Record
+                        <span className="text-[11px] font-mono text-[#4A7C59] block">
+                          Recorded on {signedOffTime || 'Just now'} · {patient.assignedDoctor || 'Dr. Krishnam'}
                         </span>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-md bg-white border border-[#CFE3D5] text-[10px] font-mono font-bold text-[#2E523A] uppercase">
+                    <span className="px-2.5 py-1 rounded-lg bg-white border border-[#CFE3D5] text-[10px] font-mono font-bold text-[#2E523A] uppercase tracking-wider shadow-2xs">
                       {selectedStatus}
                     </span>
                   </div>
