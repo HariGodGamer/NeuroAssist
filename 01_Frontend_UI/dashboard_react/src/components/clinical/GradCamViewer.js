@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { LuBrain } from 'react-icons/lu';
-import { FiLayers } from 'react-icons/fi';
+import { FiLayers, FiCrosshair, FiEye } from 'react-icons/fi';
 
 /**
  * GradCamViewer — Hospital PACS Radiologist 3D MRI & Grad-CAM Heatmap Viewer
- * Clean, non-overlapping, high-resolution DICOM neuroimaging viewer.
+ * Fixed anatomical targeting reticle with interactive toggle controls.
  */
 export default function GradCamViewer({
   scanId = 'SCN-849201',
@@ -15,10 +15,16 @@ export default function GradCamViewer({
   const [activeSliceView, setActiveSliceView] = useState('axial'); // 'axial' | 'coronal' | 'sagittal'
   const [sliceIndex, setSliceIndex] = useState(50); // 0 to 100
   const [zoomScale, setZoomScale] = useState(100); // 80 to 140
+  const [showCrosshair, setShowCrosshair] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
 
   // Map 0-100 slider to nearest 5% real slice file
   const roundedSlice = Math.min(100, Math.max(0, Math.round(sliceIndex / 5) * 5));
-  const realMriSrc = `/assets/mri/${activeSliceView}_${roundedSlice}.jpg`;
+  
+  // Real image source (with heatmap or raw grayscale)
+  const realMriSrc = showHeatmap 
+    ? `/assets/mri/${activeSliceView}_${roundedSlice}.jpg`
+    : `/assets/mri/${activeSliceView}_raw.jpg`;
 
   // Anatomical landmark descriptor
   const getLandmarkText = () => {
@@ -96,69 +102,92 @@ export default function GradCamViewer({
             }}
           />
 
-          {/* Precision Laser Crosshair Overlay SVG */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.65 }}>
-            {/* Horizontal scan line */}
-            <line
-              x1="0"
-              y1={`${sliceIndex}%`}
-              x2="100%"
-              y2={`${sliceIndex}%`}
-              stroke="#4ade80"
-              strokeWidth="1"
-              strokeDasharray="4 5"
-            />
-            {/* Vertical scan line */}
-            <line
-              x1={`${sliceIndex}%`}
-              y1="0"
-              x2={`${sliceIndex}%`}
-              y2="100%"
-              stroke="#4ade80"
-              strokeWidth="1"
-              strokeDasharray="4 5"
-            />
-            {/* Crosshair centre circle */}
-            <circle
-              cx={`${sliceIndex}%`}
-              cy={`${sliceIndex}%`}
-              r="4.5"
-              fill="none"
-              stroke="#4ade80"
-              strokeWidth="1.5"
-            />
-            {/* Target brackets */}
-            <polyline
-              points={`${sliceIndex - 3}%,${sliceIndex - 1.5}% ${sliceIndex - 3}%,${sliceIndex - 3}% ${sliceIndex - 1.5}%,${sliceIndex - 3}%`}
-              fill="none"
-              stroke="#4ade80"
-              strokeWidth="1.5"
-            />
-            <polyline
-              points={`${sliceIndex + 1.5}%,${sliceIndex - 3}% ${sliceIndex + 3}%,${sliceIndex - 3}% ${sliceIndex + 3}%,${sliceIndex - 1.5}%`}
-              fill="none"
-              stroke="#4ade80"
-              strokeWidth="1.5"
-            />
-          </svg>
+          {/* Anatomical Center Target Reticle (Locks onto Diagnostic Region) */}
+          {showCrosshair && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.7 }}>
+              {/* Subtle Horizontal center guide */}
+              <line
+                x1="0"
+                y1="50%"
+                x2="100%"
+                y2="50%"
+                stroke="#4ade80"
+                strokeWidth="0.8"
+                strokeDasharray="4 6"
+              />
+              {/* Subtle Vertical center guide */}
+              <line
+                x1="50%"
+                y1="0"
+                x2="50%"
+                y2="100%"
+                stroke="#4ade80"
+                strokeWidth="0.8"
+                strokeDasharray="4 6"
+              />
+              {/* Central Target Reticle */}
+              <circle
+                cx="50%"
+                cy="50%"
+                r="6"
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth="1.5"
+              />
+              <circle
+                cx="50%"
+                cy="50%"
+                r="1.5"
+                fill="#4ade80"
+              />
+              {/* Precision Target Brackets */}
+              <polyline
+                points="46%,48% 46%,46% 48%,46%"
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth="1.5"
+              />
+              <polyline
+                points="54%,48% 54%,46% 52%,46%"
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth="1.5"
+              />
+              <polyline
+                points="46%,52% 46%,54% 48%,54%"
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth="1.5"
+              />
+              <polyline
+                points="54%,52% 54%,54% 52%,54%"
+                fill="none"
+                stroke="#4ade80"
+                strokeWidth="1.5"
+              />
+            </svg>
+          )}
         </div>
 
         {/* Bottom-Right Colormap Legend */}
-        <div className="absolute bottom-3 right-3 z-20 bg-black/85 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg flex items-center gap-1.5 pointer-events-none shadow-md">
-          <span className="text-[9px] font-mono text-white/80 font-semibold">LOW</span>
-          <div className="w-14 h-2 rounded bg-gradient-to-r from-blue-600 via-green-400 via-yellow-400 to-red-600 border border-white/20" />
-          <span className="text-[9px] font-mono text-white/80 font-semibold">HIGH</span>
-        </div>
+        {showHeatmap && (
+          <div className="absolute bottom-3 right-3 z-20 bg-black/85 backdrop-blur-xs border border-white/15 px-2.5 py-1 rounded-lg flex items-center gap-1.5 pointer-events-none shadow-md">
+            <span className="text-[9px] font-mono text-white/80 font-semibold">LOW</span>
+            <div className="w-14 h-2 rounded bg-gradient-to-r from-blue-600 via-green-400 via-yellow-400 to-red-600 border border-white/20" />
+            <span className="text-[9px] font-mono text-white/80 font-semibold">HIGH</span>
+          </div>
+        )}
       </div>
 
-      {/* Scrubber & Zoom Controls */}
+      {/* Scrubber & Workstation Controls */}
       <div className="p-3.5 rounded-xl bg-[#FAF6F3] border border-[#E8E2DA] space-y-3">
+        
         {/* Slice Position Range Slider */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-[11px] font-mono">
             <span className="text-[#7A756F] flex items-center gap-1.5 font-bold">
               <FiLayers className="w-3.5 h-3.5 text-[#7A1F2B]" />
-              <span>SLICE POSITION (0-100):</span>
+              <span>SLICE DEPTH (Z-AXIS 0-100):</span>
             </span>
             <span className="font-bold text-[#7A1F2B] bg-[#F8EAED] px-2 py-0.5 rounded border border-[#ECC8CF]">
               {sliceIndex} / 100
@@ -174,27 +203,51 @@ export default function GradCamViewer({
           />
         </div>
 
-        {/* Landmark & Zoom Level */}
+        {/* Landmark & Interactive Toggle Tools */}
         <div className="flex items-center justify-between text-xs pt-2 border-t border-[#E8E2DA]">
-          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[240px]">
+          <span className="text-[11px] text-[#7A1F2B] font-semibold flex items-center gap-1 truncate max-w-[200px]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#7A1F2B] shrink-0" />
             <span className="truncate">{getLandmarkText()}</span>
           </span>
+          
           <div className="flex items-center gap-2">
+            {/* Toggle Heatmap Overlay */}
             <button
               type="button"
-              onClick={() => setZoomScale(100)}
-              className="text-[10px] font-bold text-[#7A1F2B] hover:underline uppercase tracking-wider"
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`px-2 py-1 rounded-md text-[10px] font-semibold border flex items-center gap-1 transition-all ${
+                showHeatmap 
+                  ? 'bg-[#F8EAED] text-[#7A1F2B] border-[#ECC8CF]' 
+                  : 'bg-white text-[#7A756F] border-[#E8E2DA]'
+              }`}
             >
-              Reset
+              <FiEye className="w-3 h-3" />
+              <span>{showHeatmap ? 'Heatmap ON' : 'Heatmap OFF'}</span>
             </button>
+
+            {/* Toggle Crosshair */}
+            <button
+              type="button"
+              onClick={() => setShowCrosshair(!showCrosshair)}
+              className={`px-2 py-1 rounded-md text-[10px] font-semibold border flex items-center gap-1 transition-all ${
+                showCrosshair 
+                  ? 'bg-[#EDF5F0] text-[#2E523A] border-[#CFE3D5]' 
+                  : 'bg-white text-[#7A756F] border-[#E8E2DA]'
+              }`}
+            >
+              <FiCrosshair className="w-3 h-3" />
+              <span>{showCrosshair ? 'Crosshair ON' : 'OFF'}</span>
+            </button>
+
+            {/* Zoom Slider */}
             <input
               type="range"
               min="80"
               max="140"
               value={zoomScale}
               onChange={(e) => setZoomScale(Number(e.target.value))}
-              className="w-24 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer"
+              className="w-16 accent-[#7A1F2B] h-1.5 rounded-lg bg-[#E8E2DA] outline-none cursor-pointer ml-1"
+              title={`Zoom: ${zoomScale}%`}
             />
           </div>
         </div>
