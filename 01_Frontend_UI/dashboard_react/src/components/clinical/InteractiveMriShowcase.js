@@ -5,7 +5,6 @@ export default function InteractiveMriShowcase() {
   const [selectedView, setSelectedView] = useState('axial'); // 'axial' | 'coronal' | 'sagittal'
   const [selectedCondition, setSelectedCondition] = useState('AD'); // 'CN' | 'MCI' | 'AD'
   const [showGradCam, setShowGradCam] = useState(true);
-  const [sliceIndex, setSliceIndex] = useState(50);
 
   // Condition metadata
   const conditionMeta = {

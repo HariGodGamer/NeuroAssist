@@ -3,13 +3,8 @@ import { useApp } from '../context/AppContext';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { 
   FiSliders, 
-  FiCpu, 
   FiCheckCircle, 
-  FiShield, 
-  FiDatabase, 
-  FiMail, 
-  FiServer,
-  FiFileText
+  FiServer
 } from 'react-icons/fi';
 import { LuBrain } from 'react-icons/lu';
 
