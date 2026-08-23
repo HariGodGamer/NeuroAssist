@@ -1,14 +1,26 @@
 import os
 import gradio as gr
 import torch
+
+try:
+    import spaces
+    has_spaces = True
+except Exception:
+    has_spaces = False
+
+if has_spaces:
+    @spaces.GPU
+    def run_engine_check():
+        cuda_status = torch.cuda.is_available()
+        return f"NeuroAssist ZeroGPU AI Engine Active | PyTorch: {torch.__version__} | Device: {'CUDA' if cuda_status else 'CPU'}"
+else:
+    def run_engine_check():
+        return f"NeuroAssist Enterprise AI Engine Active | PyTorch: {torch.__version__} | Device: CPU"
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.openapi.utils import get_openapi
-
-def run_engine_check():
-    cuda_status = torch.cuda.is_available()
-    return f"NeuroAssist Enterprise AI Engine Active | PyTorch: {torch.__version__} | Device: {'CUDA' if cuda_status else 'CPU'}"
 
 from routes import auth_routes, patient_routes, scan_routes, admin_routes
 from database import init_db
@@ -79,6 +91,6 @@ async def custom_swagger_ui():
 async def startup_event():
     await init_db()
 
-# 5. Launch native Gradio server
+# 5. Launch native Gradio server with SSR disabled for pure API space
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, ssr=False)
