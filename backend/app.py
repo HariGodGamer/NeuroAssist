@@ -1,7 +1,6 @@
 import os
 import gradio as gr
 import torch
-import uvicorn
 
 try:
     import spaces
@@ -40,9 +39,5 @@ with gr.Blocks(title="NeuroAssist API") as demo:
         ''')
 
 # 2. Mount Gradio onto the master FastAPI application at /gradio
+# Hugging Face supervisor automatically serves 'app' on port 7860
 app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
-
-# 3. Launch single unified server instance on port 7860
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
