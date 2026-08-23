@@ -1,4 +1,5 @@
 import os
+import asyncio
 import gradio as gr
 import torch
 
@@ -89,8 +90,11 @@ async def custom_swagger_ui():
 
 @demo.app.on_event("startup")
 async def startup_event():
-    await init_db()
+    try:
+        await init_db()
+    except Exception:
+        pass
 
-# 5. Launch native Gradio server with SSR disabled for pure API space
+# 5. Launch native Gradio server
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, ssr=False)
+    demo.launch(server_name="0.0.0.0", server_port=7860)
