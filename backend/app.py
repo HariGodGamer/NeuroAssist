@@ -1,6 +1,7 @@
 import os
 import gradio as gr
 import torch
+import uvicorn
 from fastapi.responses import RedirectResponse
 
 try:
@@ -45,3 +46,8 @@ app = gr.mount_gradio_app(fastapi_app, demo, path="/ui")
 @fastapi_app.get("/", include_in_schema=False)
 async def root_redirect():
     return RedirectResponse(url="/ui")
+
+# 3. Keep server running continuously on port 7860
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 7860))
+    uvicorn.run(app, host="0.0.0.0", port=port)
