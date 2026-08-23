@@ -1,5 +1,6 @@
 import os
 import gradio as gr
+import uvicorn
 import torch
 
 try:
@@ -43,4 +44,4 @@ app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
-    demo.launch(server_name="0.0.0.0", server_port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)
