@@ -1,34 +1,11 @@
 import os
 import gradio as gr
-import uvicorn
-import torch
-
-try:
-    import spaces
-    has_spaces = True
-except Exception:
-    has_spaces = False
-
-if has_spaces:
-    @spaces.GPU(duration=120)
-    def gpu_predict(input_trigger="status"):
-        cuda_ok = torch.cuda.is_available()
-        return f"NeuroAssist ZeroGPU Pipeline Active | CUDA: {cuda_ok}"
-else:
-    def gpu_predict(input_trigger="status"):
-        return "NeuroAssist Pipeline Active (CPU Mode)"
-
 from main import app as fastapi_app
 
+# Create status dashboard for Hugging Face Spaces interface
 with gr.Blocks(title="NeuroAssist API") as demo:
     gr.Markdown("# 🧠 NeuroAssist Enterprise AI Diagnostic Platform")
-    gr.Markdown("FastAPI backend & ZeroGPU inference service is live and operational.")
-
-    with gr.Row():
-        test_btn = gr.Button("⚡ Verify ZeroGPU Engine", variant="primary")
-        status_box = gr.Textbox(label="GPU Engine Status", value="Ready")
-    
-    test_btn.click(fn=gpu_predict, inputs=test_btn, outputs=status_box)
+    gr.Markdown("FastAPI backend & Clinical AI diagnostic service is live and operational.")
 
     with gr.Row():
         gr.HTML('''
@@ -38,9 +15,9 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# Mount FastAPI app onto Gradio root
+# Mount FastAPI app onto Gradio
 app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    demo.launch(server_name="0.0.0.0", server_port=port)
