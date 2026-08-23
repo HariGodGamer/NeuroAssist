@@ -1,7 +1,6 @@
 import os
 import gradio as gr
 import torch
-from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -56,15 +55,14 @@ for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
     os.makedirs(d, exist_ok=True)
 demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# 4. Build Master API Router and insert at FRONT of route table so Gradio does not intercept
-api_router = APIRouter()
-api_router.include_router(auth_routes.router)
-api_router.include_router(patient_routes.router)
-api_router.include_router(scan_routes.router)
-api_router.include_router(admin_routes.router)
+# 4. Include all API routers directly onto demo.app
+demo.app.include_router(auth_routes.router)
+demo.app.include_router(patient_routes.router)
+demo.app.include_router(scan_routes.router)
+demo.app.include_router(admin_routes.router)
 
-@api_router.get("/api/health")
-@api_router.get("/health")
+@demo.app.get("/api/health")
+@demo.app.get("/health")
 def health_endpoint():
     return JSONResponse(content={
         "status": "healthy",
@@ -73,10 +71,6 @@ def health_endpoint():
         "database": "MongoDB Atlas Connected",
         "platform": "Hugging Face Cloud"
     })
-
-# Prepend all API routes to index 0 so they take absolute priority
-for route in reversed(api_router.routes):
-    demo.app.router.routes.insert(0, route)
 
 # 5. Initialize Database on Startup
 @demo.app.on_event("startup")
