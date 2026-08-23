@@ -1,8 +1,6 @@
 import os
 import gradio as gr
 import torch
-import uvicorn
-from fastapi.responses import RedirectResponse
 
 try:
     import spaces
@@ -40,14 +38,10 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# 2. Mount Gradio onto the standard FastAPI application
-app = gr.mount_gradio_app(fastapi_app, demo, path="/ui")
+# 2. Mount FastAPI endpoints onto Gradio
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
-@fastapi_app.get("/", include_in_schema=False)
-async def root_redirect():
-    return RedirectResponse(url="/ui")
-
-# 3. Keep server running continuously on port 7860
+# 3. Launch via Gradio ZeroGPU native launcher
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    demo.launch(server_name="0.0.0.0", server_port=port)
