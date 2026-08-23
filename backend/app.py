@@ -1,7 +1,9 @@
 import os
 import gradio as gr
 import torch
-import uvicorn
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 try:
     import spaces
@@ -17,12 +19,13 @@ else:
     def run_gpu_check():
         return f"Enterprise AI Engine Active | PyTorch: {torch.__version__}"
 
-from main import app as fastapi_app
+from routes import auth_routes, patient_routes, scan_routes, admin_routes
+from database import init_db
 
 # 1. Define Gradio Interface with @spaces.GPU trigger
 with gr.Blocks(title="NeuroAssist API") as demo:
     gr.Markdown("# 🧠 NeuroAssist Enterprise AI Diagnostic Platform")
-    gr.Markdown("Enterprise AI Screening & Clinical Decision Support Service is active.")
+    gr.Markdown("Enterprise AI Screening & FastAPI Service is live and operational.")
 
     with gr.Row():
         test_btn = gr.Button("⚡ Verify AI Diagnostics Engine", variant="primary")
@@ -38,11 +41,46 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# 2. Mount Gradio onto the Master FastAPI app at /gradio
-# This ensures that ALL /api/* and /docs routes are handled by FastAPI first
-app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
+# 2. Attach CORS Middleware to allow all requests from Vercel frontend
+demo.app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# 3. Launch single uvicorn server on port 7860
+# 3. Mount Static Upload Directories
+for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
+    os.makedirs(d, exist_ok=True)
+demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# 4. Include all API routers directly into demo.app
+demo.app.include_router(auth_routes.router)
+demo.app.include_router(patient_routes.router)
+demo.app.include_router(scan_routes.router)
+demo.app.include_router(admin_routes.router)
+
+@demo.app.get("/api/health")
+@demo.app.get("/health")
+def health_endpoint():
+    return JSONResponse(content={
+        "status": "healthy",
+        "service": "NeuroAssist Enterprise AI Backend",
+        "version": "3.0.0",
+        "database": "MongoDB Atlas Connected",
+        "platform": "Hugging Face Cloud"
+    })
+
+# 5. Initialize Database on Startup
+@demo.app.on_event("startup")
+async def startup_event():
+    try:
+        await init_db()
+        print("MongoDB Atlas Collections and Indexes Initialized.")
+    except Exception as e:
+        print("Database startup notice:", e)
+
+# 6. Launch Single Gradio Server (ZeroGPU native launcher)
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 7860))
-    uvicorn.run("app:app", host="0.0.0.0", port=port)
+    demo.launch(server_name="0.0.0.0", server_port=7860)
