@@ -19,4 +19,4 @@ reportlab
 torch
 torchvision
 email-validator
-bcrypt
+bcrypt==4.0.1
