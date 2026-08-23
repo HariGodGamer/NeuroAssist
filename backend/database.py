@@ -17,7 +17,7 @@ try:
 except Exception as e:
     logger.warning(f"Could not parse DB name from MONGODB_URI: {e}. Defaulting to '{db_name}'.")
 
-client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=2500)
+client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
 db = client[db_name]
 
 # Expose collection handles
