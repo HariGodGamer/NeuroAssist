@@ -1,8 +1,5 @@
 fastapi
 uvicorn
-huggingface_hub<0.24.0
-gradio==4.44.0
-spaces
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart

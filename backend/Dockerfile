@@ -2,21 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies for psycopg2
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libpq-dev gcc \
+    gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies first (layer caching)
-COPY backend/requirements.txt .
+# Install Python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy only the backend source code
-COPY backend/ .
+# Copy backend files
+COPY . .
 
-# Create upload directories
-RUN mkdir -p uploads/mri_scans uploads/gradcam
+# Create upload directories and set permissions
+RUN mkdir -p uploads/mri_scans uploads/gradcam uploads/reports && chmod -R 777 uploads
 
-EXPOSE 8000
+# Hugging Face default port is 7860
+EXPOSE 7860
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
