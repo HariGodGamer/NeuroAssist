@@ -26,4 +26,4 @@ jobs:
           git checkout -b main
           git add .
           git commit -m "Deploy NeuroAssist Backend to Hugging Face"
-          git push -f https://krishnamgupta123:${HF_TOKEN}@huggingface.co/spaces/krishnamgupta123/Neuroasisst main
+          git push -f https://krishnamgupta123:${HF_TOKEN}@huggingface.co/spaces/krishnamgupta123/Neuro main
