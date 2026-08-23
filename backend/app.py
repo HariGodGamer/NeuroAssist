@@ -17,7 +17,9 @@ else:
     def run_engine_check():
         return f"NeuroAssist Enterprise AI Engine Active | PyTorch: {torch.__version__} | Device: CPU"
 
-from main import app as fastapi_app
+from routes import auth_routes, patient_routes, scan_routes, admin_routes
+from database import init_db
+from fastapi.staticfiles import StaticFiles
 
 # 1. Build Gradio UI
 with gr.Blocks(title="NeuroAssist API") as demo:
@@ -38,10 +40,28 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# 2. Mount FastAPI endpoints onto Gradio
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+# 2. Attach routes directly to demo.app
+demo.app.include_router(auth_routes.router)
+demo.app.include_router(patient_routes.router)
+demo.app.include_router(scan_routes.router)
+demo.app.include_router(admin_routes.router)
 
-# 3. Launch via Gradio ZeroGPU native launcher
+@demo.app.get("/api/health")
+async def health_check():
+    return {"status": "healthy", "service": "NeuroAssist AI Backend", "version": "3.0.0"}
+
+for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
+    os.makedirs(d, exist_ok=True)
+demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+@demo.app.on_event("startup")
+async def startup_db():
+    try:
+        await init_db()
+    except Exception:
+        pass
+
+# 3. Launch single Gradio server instance
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
     demo.launch(server_name="0.0.0.0", server_port=port)
