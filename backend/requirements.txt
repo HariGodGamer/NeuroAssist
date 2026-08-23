@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 gradio
+spaces
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart

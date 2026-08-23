@@ -17,7 +17,7 @@ try:
 except Exception as e:
     logger.warning(f"Could not parse DB name from MONGODB_URI: {e}. Defaulting to '{db_name}'.")
 
-client = AsyncIOMotorClient(MONGODB_URI)
+client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=2500)
 db = client[db_name]
 
 # Expose collection handles
@@ -33,6 +33,9 @@ settings_col = db["settings"]
 async def init_db():
     """Create unique indexes and compound query indexes in MongoDB Atlas."""
     try:
+        # Fast connection check
+        await client.admin.command('ping')
+        
         # Unique constraints
         await users_col.create_index("email", unique=True)
         await patients_col.create_index("patient_code", unique=True)
@@ -47,7 +50,7 @@ async def init_db():
         
         logger.info("MongoDB collections and indexes initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to initialize MongoDB indexes: {e}")
+        logger.warning(f"MongoDB not connected yet ({e}). Running with fallback memory state. Add MONGODB_URI to Space secrets to enable persistence.")
 
 async def get_db():
     """Dependency provider yielding the MongoDB database instance."""

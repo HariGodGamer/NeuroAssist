@@ -1,12 +1,29 @@
 import os
 import gradio as gr
 import uvicorn
+
+# ZeroGPU decorator support
+try:
+    import spaces
+    has_spaces = True
+except Exception:
+    has_spaces = False
+
+if has_spaces:
+    @spaces.GPU(duration=60)
+    def gpu_warmup():
+        """Ensure Hugging Face ZeroGPU detects GPU function on startup."""
+        return "ZeroGPU Ready"
+else:
+    def gpu_warmup():
+        return "CPU Ready"
+
 from main import app as fastapi_app
 
-# Create a clean status dashboard for Hugging Face Spaces interface
+# Create status dashboard for Hugging Face Spaces interface
 with gr.Blocks(title="NeuroAssist API") as demo:
     gr.Markdown("# 🧠 NeuroAssist Enterprise AI Diagnostic Platform")
-    gr.Markdown("FastAPI backend is active and serving clinical endpoints.")
+    gr.Markdown("ZeroGPU & FastAPI backend is active and serving clinical endpoints.")
     with gr.Row():
         gr.HTML('''
             <div style="display:flex; gap:12px; margin-top:10px;">
