@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+gradio
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
