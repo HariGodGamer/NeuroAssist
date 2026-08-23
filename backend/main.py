@@ -26,8 +26,11 @@ for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle hook."""
     logger.info("NeuroAssist API starting — initialising MongoDB collections & indexes …")
-    await init_db()
-    logger.info("Database ready.")
+    try:
+        await init_db()
+        logger.info("Database ready.")
+    except Exception as e:
+        logger.warning(f"Database startup notice: {e}")
     yield
     logger.info("NeuroAssist API shutting down.")
 
@@ -37,18 +40,16 @@ app = FastAPI(
     description="Enterprise AI Healthcare Platform — Neurological Screening & MRI Intelligence",
     version="3.0.0",
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://vercel.app",
-    ],
-    allow_origin_regex=r"https://.*\.vercel\.app",
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,14 +67,21 @@ app.include_router(admin_routes.router)
 @app.get("/")
 async def read_root():
     return {
-        "status": "ok",
+        "status": "online",
         "app": "NeuroAssist API",
         "version": "3.0.0",
-        "database": "MongoDB Atlas (Motor async)",
-        "inference": "PyTorch ResNet-10 + SimpleITK preprocessing",
+        "database": "MongoDB Atlas",
+        "docs": "/docs",
+        "health": "/api/health"
     }
 
 
 @app.get("/api/health")
+@app.get("/health")
 async def health():
-    return {"status": "healthy", "version": "3.0.0"}
+    return {
+        "status": "healthy",
+        "service": "NeuroAssist AI Backend",
+        "version": "3.0.0",
+        "platform": "Hugging Face Cloud"
+    }

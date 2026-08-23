@@ -1,9 +1,7 @@
 import os
 import gradio as gr
 import torch
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+import uvicorn
 
 try:
     import spaces
@@ -20,8 +18,7 @@ else:
     def run_engine_check():
         return f"NeuroAssist Enterprise AI Engine Active | PyTorch: {torch.__version__} | Device: CPU"
 
-from routes import auth_routes, patient_routes, scan_routes, admin_routes
-from database import init_db
+from main import app as fastapi_app
 
 # 1. Build Gradio UI
 with gr.Blocks(title="NeuroAssist API") as demo:
@@ -42,44 +39,10 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# 2. Attach CORS to allow requests from Vercel and all origins
-demo.app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 2. Mount Gradio onto the master FastAPI application at /gradio
+app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
 
-# 3. Mount static directories
-for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
-    os.makedirs(d, exist_ok=True)
-demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
-
-# 4. Attach API routers
-demo.app.include_router(auth_routes.router)
-demo.app.include_router(patient_routes.router)
-demo.app.include_router(scan_routes.router)
-demo.app.include_router(admin_routes.router)
-
-@demo.app.get("/api/health")
-@demo.app.get("/health")
-async def health_check():
-    return JSONResponse(content={
-        "status": "healthy",
-        "service": "NeuroAssist Enterprise AI Backend",
-        "version": "3.0.0",
-        "platform": "Hugging Face Cloud"
-    })
-
-@demo.app.on_event("startup")
-async def startup_db():
-    try:
-        await init_db()
-    except Exception as e:
-        print(f"Startup DB init notice: {e}")
-
-# 5. Launch single Gradio server instance
+# 3. Launch single unified server instance on port 7860
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
-    demo.launch(server_name="0.0.0.0", server_port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port)
