@@ -1,11 +1,34 @@
 import os
 import gradio as gr
+import torch
+
+try:
+    import spaces
+    has_spaces = True
+except Exception:
+    has_spaces = False
+
+if has_spaces:
+    @spaces.GPU
+    def run_gpu_check():
+        cuda_status = torch.cuda.is_available()
+        return f"ZeroGPU Inference Pipeline Ready (CUDA: {cuda_status})"
+else:
+    def run_gpu_check():
+        return "CPU Pipeline Ready"
+
 from main import app as fastapi_app
 
-# Create status dashboard for Hugging Face Spaces interface
+# Build Gradio UI with ZeroGPU action
 with gr.Blocks(title="NeuroAssist API") as demo:
     gr.Markdown("# 🧠 NeuroAssist Enterprise AI Diagnostic Platform")
-    gr.Markdown("FastAPI backend & Clinical AI diagnostic service is live and operational.")
+    gr.Markdown("ZeroGPU AI Screening & FastAPI Service is active.")
+    
+    with gr.Row():
+        test_btn = gr.Button("⚡ Verify ZeroGPU Engine", variant="primary")
+        status_box = gr.Textbox(label="GPU Engine Status", value="Ready")
+    
+    test_btn.click(fn=run_gpu_check, inputs=[], outputs=[status_box])
 
     with gr.Row():
         gr.HTML('''
