@@ -12,14 +12,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Deploy Backend to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          cd backend
+          rm -rf uploads/*
+          mkdir -p uploads/mri_scans uploads/gradcam uploads/reports
           git config --global user.email "krishnamgupta123@gmail.com"
           git config --global user.name "krishnamgupta123"
-          git subtree split --prefix backend -b hf-deploy
-          git push -f https://krishnamgupta123:${HF_TOKEN}@huggingface.co/spaces/krishnamgupta123/Neuroasisst hf-deploy:main
+          git init
+          git checkout -b main
+          git add .
+          git commit -m "Deploy NeuroAssist Backend to Hugging Face"
+          git push -f https://krishnamgupta123:${HF_TOKEN}@huggingface.co/spaces/krishnamgupta123/Neuroasisst main
