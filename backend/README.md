@@ -3,10 +3,11 @@ title: NeuroAssist API
 emoji: 🧠
 colorFrom: red
 colorTo: indigo
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 5.16.0
+app_file: app.py
 pinned: false
 ---
 
 # NeuroAssist API Backend
-High-throughput FastAPI enterprise clinical decision support and MRI screening API service.
+FastAPI powered AI diagnostic & MRI screening backend on Hugging Face ZeroGPU.
