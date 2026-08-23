@@ -19,7 +19,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "harigodgamer@gmail.com"
-          git config --global user.name "HariGodGamer"
+          git config --global user.email "krishnamgupta123@gmail.com"
+          git config --global user.name "krishnamgupta123"
           git subtree split --prefix backend -b hf-deploy
-          git push -f https://HariGodGamer:${HF_TOKEN}@huggingface.co/spaces/HariGodGamer/neuroassit hf-deploy:main
+          git push -f https://krishnamgupta123:${HF_TOKEN}@huggingface.co/spaces/krishnamgupta123/Neuroasisst hf-deploy:main
