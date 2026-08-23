@@ -1,6 +1,7 @@
 import os
 import gradio as gr
 import torch
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -41,7 +42,7 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# 2. Attach CORS Middleware to allow requests from Vercel frontend
+# 2. Attach CORS Middleware to allow all requests from Vercel frontend
 demo.app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -55,25 +56,29 @@ for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
     os.makedirs(d, exist_ok=True)
 demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# 4. Attach API Routers directly into demo.app
-demo.app.include_router(auth_routes.router)
-demo.app.include_router(patient_routes.router)
-demo.app.include_router(scan_routes.router)
-demo.app.include_router(admin_routes.router)
+# 4. Build Master API Router and insert at FRONT of route table so Gradio does not intercept
+api_router = APIRouter()
+api_router.include_router(auth_routes.router)
+api_router.include_router(patient_routes.router)
+api_router.include_router(scan_routes.router)
+api_router.include_router(admin_routes.router)
 
-# 5. Define Health Check Endpoint returning JSONResponse
-@demo.app.get("/api/health")
-@demo.app.get("/health")
+@api_router.get("/api/health")
+@api_router.get("/health")
 def health_endpoint():
     return JSONResponse(content={
         "status": "healthy",
-        "service": "NeuroAssist AI Backend",
+        "service": "NeuroAssist Enterprise AI Backend",
         "version": "3.0.0",
         "database": "MongoDB Atlas Connected",
         "platform": "Hugging Face Cloud"
     })
 
-# 6. Initialize Database on Startup
+# Prepend all API routes to index 0 so they take absolute priority
+for route in reversed(api_router.routes):
+    demo.app.router.routes.insert(0, route)
+
+# 5. Initialize Database on Startup
 @demo.app.on_event("startup")
 async def startup_event():
     try:
@@ -82,6 +87,6 @@ async def startup_event():
     except Exception as e:
         print("Database startup notice:", e)
 
-# 7. Launch Single Gradio Server
+# 6. Launch Single Gradio Server
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=7860)
