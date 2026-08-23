@@ -1,7 +1,8 @@
 import os
 import gradio as gr
-import uvicorn
 import torch
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 try:
     import spaces
@@ -16,11 +17,12 @@ if has_spaces:
         return f"ZeroGPU Inference Pipeline Ready (CUDA: {cuda_status})"
 else:
     def run_gpu_check():
-        return "CPU Pipeline Ready"
+        return "CPU Pipeline Active"
 
-from main import app as fastapi_app
+from routes import auth_routes, patient_routes, scan_routes, admin_routes
+from database import init_db
 
-# Build Gradio UI with ZeroGPU action
+# 1. Build Gradio UI with ZeroGPU action
 with gr.Blocks(title="NeuroAssist API") as demo:
     gr.Markdown("# 🧠 NeuroAssist Enterprise AI Diagnostic Platform")
     gr.Markdown("ZeroGPU AI Screening & FastAPI Service is active.")
@@ -39,5 +41,29 @@ with gr.Blocks(title="NeuroAssist API") as demo:
             </div>
         ''')
 
-# Mount FastAPI app onto Gradio
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+# 2. Attach FastAPI routes, middleware and database init directly to Gradio's internal FastAPI app
+demo.app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+for d in ["uploads/mri_scans", "uploads/gradcam", "uploads/reports"]:
+    os.makedirs(d, exist_ok=True)
+
+demo.app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+demo.app.include_router(auth_routes.router)
+demo.app.include_router(patient_routes.router)
+demo.app.include_router(scan_routes.router)
+demo.app.include_router(admin_routes.router)
+
+@demo.app.on_event("startup")
+async def startup_event():
+    await init_db()
+
+# 3. Launch native Gradio server
+if __name__ == "__main__":
+    demo.launch(server_name="0.0.0.0", server_port=7860)
