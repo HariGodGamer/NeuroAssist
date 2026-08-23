@@ -134,7 +134,7 @@ export default function InteractiveMriShowcase() {
               <div>SERIES: 3D T1-ISO 1.0mm</div>
               <div>MATRIX: 256 x 256 x 176</div>
               <div>PLANE: {selectedView.toUpperCase()}</div>
-              <div>SLICE: {sliceIndex} / 176</div>
+              <div>SLICE: 88 / 176</div>
             </div>
 
             <div className="absolute top-3 right-3 z-20 text-[10px] font-mono text-white/60 text-right pointer-events-none drop-shadow">
